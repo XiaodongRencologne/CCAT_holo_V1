@@ -3,16 +3,6 @@ import torch as T
 import time
 
 c=299792458
-'''
-some germetrical parametrs
-'''
-Theta_0=0.927295218001612; # offset angle of MR;
-Ls      = 12000.0;           # distance between focal point and SR
-Lm      = 6000.0;            # distance between MR and SR;
-L_fimag=18000+Ls
-F=20000
-
-
 # In[2]:
 
 # import the Firchhoffpy package;
@@ -67,7 +57,7 @@ def read_input(inputfile):
 '''
 2. produce the coordinates relationship;
 '''
-def relation_coorsys(Theta_0,Ls,Lm,L_fimag,F,defocus):
+def relation_coorsys(defocus):
     '''
     germetrical parametrs
     
@@ -83,6 +73,14 @@ def relation_coorsys(Theta_0,Ls,Lm,L_fimag,F,defocus):
     #angle# is angle change of local coordinates and global coordinates;
     #D#     is the distance between origin of local coord and global coord in global coordinates;
     '''
+    '''
+    some germetrical parametrs
+    '''
+    Theta_0=0.927295218001612; # offset angle of MR;
+    Ls      = 12000.0;           # distance between focal point and SR
+    Lm      = 6000.0;            # distance between MR and SR;
+    L_fimag=18000+Ls
+    F=20000
 
     angle_m2=[-(np.pi/2+Theta_0)/2,0,0] #  1. m2 and global co-ordinates
     D_m2=[0,-Lm*np.sin(Theta_0),0]
@@ -155,7 +153,7 @@ def First_computing(m2,m2_n,m2_dA, # Mirror 2,
     
     start=time.perf_counter();
 
-    angle_m2,D_m2,angle_m1,D_m1,angle_fimag,D_fimag,angle_f,D_f,angle_s,D_s=relation_coorsys(Theta_0,Ls,Lm,L_fimag,F,defocus);
+    angle_m2,D_m2,angle_m1,D_m1,angle_fimag,D_fimag,angle_f,D_f,angle_s,D_s=relation_coorsys(defocus);
     '''
     1. get the field on m2;
     '''
@@ -183,20 +181,20 @@ def First_computing(m2,m2_n,m2_dA, # Mirror 2,
     3. calculate the field on m1;
     '''
     #print('3')
-    m1=local2global(angle_m1,D_m1,m1);
-    m1_n=local2global(angle_m1,[0,0,0],m1_n);
+    m1=local2global(angle_m1,D_m1,m1)
+    m1_n=local2global(angle_m1,[0,0,0],m1_n)
     aperture=T.cat((T.tensor(m1.x),T.tensor(m1.y))).reshape(2,-1)
-    NN=int(fimag.x.size/2);
-    Fimag0=[fimag.x[NN],fimag.y[NN],fimag.z[NN]];
+    NN=int(fimag.x.size/2)
+    Fimag0=[fimag.x[NN],fimag.y[NN],fimag.z[NN]]
     x=Fimag0[0].item()-m1.x.reshape(1,-1)
     y=Fimag0[1].item()-m1.y.reshape(1,-1)
     z=Fimag0[2].item()-m1.z.reshape(1,-1)
     
-    r=np.sqrt(x**2+y**2+z**2);
-    cosm1_i=(x*m1_n.x+y*m1_n.y+z*m1_n.z)/r;
+    r=np.sqrt(x**2+y**2+z**2)
+    cosm1_i=(x*m1_n.x+y*m1_n.y+z*m1_n.z)/r
     #cosm1_i=T.tensor(cosm1_i).to(DEVICE);
-    del(x,y,z,r);
-    
+    del(x,y,z,r)
+
     Matrix2,Field_m1,cosm=PO_scalar(fimag,fimag_n,fimag_dA,m1,np.array([1]),Field_fimag,k,Keepmatrix=Keepmatrix)
     del(cosm)
     
@@ -255,9 +253,9 @@ def field_calculation(inputfile,source_field,defocus,ad_m2,ad_m1):
     return Field_s,Field_fimag,Field_m1,Field_m2
     
 '''
-6. function used to produce the forward calculation function used to 
+6.1. function used to produce the forward calculation function used to 
 '''    
-def Make_fitfuc(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,ad_m1,DEVICE0=T.device('cpu')):
+def Make_fitfuc(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,ad_m1,DEVICE=T.device('cpu')):
     # 0. read the input parameters from the input files;
     coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
     # 2. build model;
@@ -269,68 +267,7 @@ def Make_fitfuc(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,a
     # 3. prepared the matrixes for 4 receiver locations;
     print('0') 
     source=Coord();
-    source0=np.genfromtxt(sourcefile+'/400_400_600.txt');
-    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
-    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
-    
-    
-    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE0);
-    del(Field_s,Field_fimag,Field_m1,aperture)
-   
-    print('1');
-    source0=np.genfromtxt(sourcefile+'/400_-400_600.txt');
-    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
-    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
-    
-    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1=DATA2CUDA(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,DEVICE=DEVICE0);
-    del(Field_s,Field_fimag,Field_m1,aperture)
-    
-    print('2');
-    source0=np.genfromtxt(sourcefile+'/-400_400_600.txt');
-    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
-    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
-    
-    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2=DATA2CUDA(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,DEVICE=DEVICE0)
-    del(Field_s,Field_fimag,Field_m1,aperture)
-    
-    print('3');
-    source0=np.genfromtxt(sourcefile+'/-400_-400_600.txt');
-    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
-    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
-    
-    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE0)
-    del(Field_s,Field_fimag,Field_m1)
-    ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
-    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE0);
-    
-    def fitfuc(Adjusters,Para_A,Para_p):        
-        R0=fitting_func(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
-        R1=fitting_func(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6:6*2],Para_p[5:5*2],aperture/3000);
-        R2=fitting_func(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*2:6*3],Para_p[5*2:5*3],aperture/3000);
-        R3=fitting_func(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
-        R=T.cat((R0,R1,R2,R3));        
-        return R; 
-
-    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y
-
-'''
-7. function used to produce the forward calculation function used to 
-'''    
-def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,ad_m1,Zernike_order,DEVICE=T.device('cpu')):
-    # 0. read the input parameters from the input files;
-    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
-    # 2. build model;
-    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
-                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M1_N[1],R1,
-                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
-                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1);
-    
-    func2=make_zernike(Zernike_order,m2.x/3000,(m2.y+0.0)/3000,dtype='torch',device=DEVICE);
-    func1=make_zernike(Zernike_order,m1.x/3000,(m1.y-0.0)/3000,dtype='torch',device=DEVICE);
-    # 3. prepared the matrixes for 4 receiver locations;
-    print('0') 
-    source=Coord();
-    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt');
+    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt',delimiter=',');
     source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
     Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
     
@@ -339,7 +276,7 @@ def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3
     del(Field_s,Field_fimag,Field_m1,aperture)
    
     print('1');
-    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt');
+    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt',delimiter=',');
     source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
     Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
     
@@ -347,7 +284,7 @@ def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3
     del(Field_s,Field_fimag,Field_m1,aperture)
     
     print('2');
-    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt');
+    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt',delimiter=',');
     source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
     Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
     
@@ -355,14 +292,146 @@ def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3
     del(Field_s,Field_fimag,Field_m1,aperture)
     
     print('3');
-    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt');
+    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1)
+    ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE);
+    
+    def fitfuc(Adjusters,Para_A,Para_p):        
+        R0=fitting_func(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
+        R1=fitting_func(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6:6*2],Para_p[5:5*2],aperture/3000);
+        R2=fitting_func(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*2:6*3],Para_p[5*2:5*3],aperture/3000);
+        R3=fitting_func(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
+        R=T.cat((R0,R1,R2,R3));        
+        return R; 
+    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y
+
+'''
+6.2. function used to produce the forward calculation function used for fitting loops 
+'''    
+def Make_fitfuc_5(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,defocus4,ad_m2,ad_m1,DEVICE=T.device('cpu')):
+    # 0. read the input parameters from the input files;
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
+    # 2. build model;
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M1_N[1],R1,
+                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1);
+    
+    # 3. prepared the matrixes for 4 receiver locations;
+    print('4') 
+    source=Coord();
+    source0=np.genfromtxt(sourcefile+'/center.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_s,Field_fimag,Field_m1,Field_m2_4,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus4,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_m2_4=DATA2CUDA(Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_m2_4,DEVICE=DEVICE);
+    
+    print('0') 
+    source=Coord();
+    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+   
+    print('1');
+    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1=DATA2CUDA(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('2');
+    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2=DATA2CUDA(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('3');
+    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1)
+    ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE);
+    
+    def fitfuc(Adjusters,Para_A,Para_p):        
+        R0=fitting_func(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
+        R1=fitting_func(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6:6*2],Para_p[5:5*2],aperture/3000);
+        R2=fitting_func(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*2:6*3],Para_p[5*2:5*3],aperture/3000);
+        R3=fitting_func(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*3:6*4],Para_p[5*3:5*4],aperture/3000);
+        R4=fitting_func(Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_m2_4,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*4:],Para_p[5*4:],aperture/3000);
+        R=T.cat((R0,R1,R2,R3,R4));        
+        return R; 
+    
+    
+    
+    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y;    
+
+
+'''
+7.1 function used to produce the forward calculation function used to 
+'''    
+def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,ad_m1,Zernike_order,DEVICE=T.device('cpu')):
+    # 0. read the input parameters from the input files;
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
+    # 2. build model;
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M1_N[1],R1,
+                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1)
+    
+    func2=make_zernike(Zernike_order,m2.x/3000,(m2.y+0.0)/3000,dtype='torch',device=DEVICE)
+    func1=make_zernike(Zernike_order,m1.x/3000,(m1.y-0.0)/3000,dtype='torch',device=DEVICE)
+    # 3. prepared the matrixes for 4 receiver locations;
+    print('0') 
+    source=Coord()
+    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+   
+    print('1')
+    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1=DATA2CUDA(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('2')
+    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2=DATA2CUDA(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('3');
+    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt',delimiter=',');
     source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
     Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
     
     Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE)
     del(Field_s,Field_fimag,Field_m1)
     #ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
-    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE0);
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE);
     
     def fitfuc(coeffi2,coeffi1,Para_A,Para_p):        
         R0=fitting_func_zernike(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,coeffi2,coeffi1,func2,func1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
@@ -371,7 +440,184 @@ def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3
         R3=fitting_func_zernike(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,coeffi2,coeffi1,func2,func1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
         R=T.cat((R0,R1,R2,R3));        
         return R; 
-    
-    
-    
     return fitfuc#,ad2_x,ad2_y,ad1_x,ad1_y;    
+
+'''
+7.2 function used to produce the forward calculation function used to 
+'''    
+def Make_fitfuc_zernike5(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,defocus4,ad_m2,ad_m1,Zernike_order,DEVICE=T.device('cpu')):
+    # 0. read the input parameters from the input files;
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
+    # 2. build model;
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M1_N[1],R1,
+                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1)
+    
+    func2=make_zernike(Zernike_order,m2.x/3000,(m2.y+0.0)/3000,dtype='torch',device=DEVICE)
+    func1=make_zernike(Zernike_order,m1.x/3000,(m1.y-0.0)/3000,dtype='torch',device=DEVICE)
+    # 3. prepared the matrixes for 4 receiver locations;
+    print('4') 
+    source=Coord();
+    source0=np.genfromtxt(sourcefile+'/center.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_s,Field_fimag,Field_m1,Field_m2_4,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus4,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_m2_4=DATA2CUDA(Matrix21_4,Matrix3_4,cosm2_i_4,cosm2_r_4,cosm1_i_4,cosm1_r_4,Field_m2_4,DEVICE=DEVICE);
+    
+    
+    print('0') 
+    source=Coord()
+    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+   
+    print('1')
+    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1=DATA2CUDA(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('2')
+    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2=DATA2CUDA(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('3');
+    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt',delimiter=',');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1)
+    #ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE);
+    
+    def fitfuc(coeffi2,coeffi1,Para_A,Para_p):        
+        R0=fitting_func_zernike(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,coeffi2,coeffi1,func2,func1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
+        R1=fitting_func_zernike(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,coeffi2,coeffi1,func2,func1,k,Para_A[6:6*2],Para_p[5:5*2],aperture/3000);
+        R2=fitting_func_zernike(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,coeffi2,coeffi1,func2,func1,k,Para_A[6*2:6*3],Para_p[5*2:5*3],aperture/3000);
+        R3=fitting_func_zernike(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,coeffi2,coeffi1,func2,func1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
+        R=T.cat((R0,R1,R2,R3));        
+        return R; 
+    return fitfuc#,ad2_x,ad2_y,ad1_x,ad1_y;    
+
+
+
+'''
+8. function used to produce the forward calculation function used for fitting loops, which will be only used for one beam measurements and one mirror
+'''    
+def Make_fitfuc_grid_oneBeam(inputfile,sourcefile,defocus0,ad_m2,ad_m1,DEVICE=T.device('cpu')):
+    # 0. read the input parameters from the input files;
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
+    # 2. build model;
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M1_N[1],R1,
+                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1);
+    
+    
+    # 3. prepared the matrixes for 4 receiver locations;
+    source=Coord();
+    source0=np.genfromtxt(sourcefile+'/on-axis.txt',delimiter=',')
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2]
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1)
+    
+    ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1)
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE);
+    filter2,filter1=DATA2CUDA(filter2,filter1,DEVICE=DEVICE)
+    def fitfuc(Adjusters,Para_A,Para_p):    
+        R0=fitting_func(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[0:6],Para_p[0:5],aperture/3000)
+        return R0; 
+    
+    
+    
+    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y;
+
+
+class CCATholo():
+    def __init__(self,Model_folder,scan_folder):
+        self.fitfuc=None
+        self.inputfolder=Model_folder
+        self.ad2_x=None
+        self.ad2_y=None
+        self.ad1_x=None
+        self.ad1_y=None
+
+    def Make_fitfuc(self,scan_folder,
+                    defocus,
+                    Rx_p=[[0,0]],
+                    init_ad=np.zeros(5*(69+77)),
+                    fitting_type='zernike',
+                    zernike_order=7,
+                    DEVICE=T.device('cpu')):
+        Num=len(Rx_p)
+        if Num==1:
+            self.fitfuc,ad2_x,ad2_y,ad1_x,ad1_y=Make_fitfuc_grid_oneBeam(self.inputfolder,
+                                                 scan_folder,
+                                                 [Rx_p[0][0],Rx_p[0][1],defocus],
+                                                 init_ad[0:5*69],
+                                                 init_ad[5*69:],
+                                                 DEVICE=DEVICE)
+        elif Num==4:
+            if fitting_type.lower=='zernike':
+                self.fitfuc=Make_fitfuc_zernike(self.inputfolder,
+                                                scan_folder,
+                                                [Rx_p[0][0],Rx_p[0][1],defocus],
+                                                [Rx_p[1][0],Rx_p[1][1],defocus],
+                                                [Rx_p[2][0],Rx_p[2][1],defocus],
+                                                [Rx_p[3][0],Rx_p[3][1],defocus],
+                                                init_ad[0:5*69],
+                                                init_ad[5*69:],
+                                                zernike_order,
+                                                DEVICE=DEVICE)
+            elif fitting_type.lower=='adjuster':
+                self.fitfuc=Make_fitfuc(self.inputfolder,
+                                        scan_folder,
+                                        [Rx_p[0][0],Rx_p[0][1],defocus],
+                                        [Rx_p[1][0],Rx_p[1][1],defocus],
+                                        [Rx_p[2][0],Rx_p[2][1],defocus],
+                                        [Rx_p[3][0],Rx_p[3][1],defocus],
+                                        init_ad[0:5*69],
+                                        init_ad[5*69:],
+                                        DEVICE=DEVICE)
+        elif Num==5:
+            if fitting_type.lower=='zernike':
+                self.fitfuc=Make_fitfuc_zernike5(self.inputfolder,
+                                                scan_folder,
+                                                [Rx_p[0][0],Rx_p[0][1],defocus],
+                                                [Rx_p[1][0],Rx_p[1][1],defocus],
+                                                [Rx_p[2][0],Rx_p[2][1],defocus],
+                                                [Rx_p[3][0],Rx_p[3][1],defocus],
+                                                [Rx_p[4][0],Rx_p[4][1],defocus],
+                                                init_ad[0:5*69],
+                                                init_ad[5*69:],
+                                                zernike_order,
+                                                DEVICE=DEVICE)
+            elif fitting_type.lower=='adjuster':
+                self.fitfuc=Make_fitfuc_5(self.inputfolder,
+                                        scan_folder,
+                                        [Rx_p[0][0],Rx_p[0][1],defocus],
+                                        [Rx_p[1][0],Rx_p[1][1],defocus],
+                                        [Rx_p[2][0],Rx_p[2][1],defocus],
+                                        [Rx_p[3][0],Rx_p[3][1],defocus],
+                                        [Rx_p[4][0],Rx_p[4][1],defocus],
+                                        init_ad[0:5*69],
+                                        init_ad[5*69:],
+                                        DEVICE=DEVICE)
+    
+    def ff(self):
+        pass
+
