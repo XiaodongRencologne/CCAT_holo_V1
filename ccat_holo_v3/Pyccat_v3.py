@@ -549,7 +549,7 @@ def Make_fitfuc_grid_oneBeam(inputfile,sourcefile,defocus0,ad_m2,ad_m1,DEVICE=T.
 
 class CCATholo():
     def __init__(self,Model_folder,scan_folder):
-        self.fitfuc=None
+        self.forward=None
         self.inputfolder=Model_folder
         self.ad2_x=None
         self.ad2_y=None
@@ -573,7 +573,7 @@ class CCATholo():
                                                  DEVICE=DEVICE)
         elif Num==4:
             if fitting_type.lower=='zernike':
-                self.fitfuc=Make_fitfuc_zernike(self.inputfolder,
+                self.forward=Make_fitfuc_zernike(self.inputfolder,
                                                 scan_folder,
                                                 [Rx_p[0][0],Rx_p[0][1],defocus],
                                                 [Rx_p[1][0],Rx_p[1][1],defocus],
@@ -584,7 +584,7 @@ class CCATholo():
                                                 zernike_order,
                                                 DEVICE=DEVICE)
             elif fitting_type.lower=='adjuster':
-                self.fitfuc=Make_fitfuc(self.inputfolder,
+                self.forward=Make_fitfuc(self.inputfolder,
                                         scan_folder,
                                         [Rx_p[0][0],Rx_p[0][1],defocus],
                                         [Rx_p[1][0],Rx_p[1][1],defocus],
@@ -595,7 +595,7 @@ class CCATholo():
                                         DEVICE=DEVICE)
         elif Num==5:
             if fitting_type.lower=='zernike':
-                self.fitfuc=Make_fitfuc_zernike5(self.inputfolder,
+                self.forward=Make_fitfuc_zernike5(self.inputfolder,
                                                 scan_folder,
                                                 [Rx_p[0][0],Rx_p[0][1],defocus],
                                                 [Rx_p[1][0],Rx_p[1][1],defocus],
@@ -607,7 +607,7 @@ class CCATholo():
                                                 zernike_order,
                                                 DEVICE=DEVICE)
             elif fitting_type.lower=='adjuster':
-                self.fitfuc=Make_fitfuc_5(self.inputfolder,
+                self.forward=Make_fitfuc_5(self.inputfolder,
                                         scan_folder,
                                         [Rx_p[0][0],Rx_p[0][1],defocus],
                                         [Rx_p[1][0],Rx_p[1][1],defocus],
@@ -618,6 +618,9 @@ class CCATholo():
                                         init_ad[5*69:],
                                         DEVICE=DEVICE)
     
-    def ff(self):
-        pass
+    def fit_large_sys_Error(self,M_data):
+        return A_para,P_para
+    
+    def fit_mirrors(self,M_data):
+        return results
 
