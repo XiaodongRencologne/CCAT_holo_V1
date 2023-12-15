@@ -1,47 +1,42 @@
-#!/usr/bin/env python
-# coding: utf-8
+import numpy as np
+import torch as T
+import time
 
-# In[ ]:
-
-
-import numpy as np;
-import torch as T;
-import copy ;
-import time;
-
-#DEVICE0=T.device('cpu')
-c=299792458;
+c=299792458
 '''
 some germetrical parametrs
 '''
 Theta_0=0.927295218001612; # offset angle of MR;
 Ls      = 12000.0;           # distance between focal point and SR
 Lm      = 6000.0;            # distance between MR and SR;
-L_fimag=18000+Ls;
-F=20000;
+L_fimag=18000+Ls
+F=20000
 
 
 # In[2]:
 
 # import the Firchhoffpy package;
-import Kirchhoffpy;
+import Kirchhoffpy
 # the intergration funciton by using scalar diffraction theory;
-from Kirchhoffpy.Kirchhoff import Complex,PO_scalar;
+from Kirchhoffpy.Kirchhoff import Complex,PO_scalar
 # 1. define the guassian beam of the input feed;
-from Kirchhoffpy.Feedpy import Gaussibeam;
+from Kirchhoffpy.Feedpy import Gaussibeam
 # 2. translation between coordinates system;
-from Kirchhoffpy.coordinate_operations import Coord;
-from Kirchhoffpy.coordinate_operations import Transform_local2global as local2global;
-from Kirchhoffpy.coordinate_operations import Transform_global2local as global2local;
-from Kirchhoffpy.coordinate_operations import cartesian_to_spherical as cart2spher;
+from Kirchhoffpy.coordinate_operations import Coord
+from Kirchhoffpy.coordinate_operations import Transform_local2global as local2global
+from Kirchhoffpy.coordinate_operations import Transform_global2local as global2local
+from Kirchhoffpy.coordinate_operations import cartesian_to_spherical as cart2spher
 # 3. mirror
-from Kirchhoffpy.mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster;
+from Kirchhoffpy.mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
 # 4. field in source region;
-from Kirchhoffpy.Spheical_field import spheical_grid;
+#from Kirchhoffpy.Spheical_field import spheical_grid;
 # 5. inference function;
-from Kirchhoffpy.inference import DATA2CUDA,fitting_func;
+from Kirchhoffpy.inference import DATA2CUDA, correctphase2
+from Kirchhoffpy.inference import fitting_func, fitting_func_zernike
 
-
+from Kirchhoffpy.zernike_torch import mkCFn as make_zernike;
+from Kirchhoffpy.zernike_torch import N as poly_N;
+#%%
 '''
 1. read the input parameters
 '''
@@ -257,11 +252,7 @@ def field_calculation(inputfile,source_field,defocus,ad_m2,ad_m1):
                                                                                                                     edge_taper,
                                                                                                                     Keepmatrix=False);
     
-    return Field_s,Field_fimag,Field_m1,Field_m2;
-    
-
-
-
+    return Field_s,Field_fimag,Field_m1,Field_m2
     
 '''
 6. function used to produce the forward calculation function used to 
@@ -319,19 +310,13 @@ def Make_fitfuc(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,a
         R3=fitting_func(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
         R=T.cat((R0,R1,R2,R3));        
         return R; 
-    
-    
-    
-    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y;
-    
-    
-    
-    
-    
+
+    return fitfuc,ad2_x,ad2_y,ad1_x,ad1_y
+
 '''
-7. build a model
+7. function used to produce the forward calculation function used to 
 '''    
-def Model(inputfile,ad_m2,ad_m1):
+def Make_fitfuc_zernike(inputfile,sourcefile,defocus0,defocus1,defocus2,defocus3,ad_m2,ad_m1,Zernike_order,DEVICE=T.device('cpu')):
     # 0. read the input parameters from the input files;
     coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
     # 2. build model;
@@ -340,17 +325,53 @@ def Model(inputfile,ad_m2,ad_m1):
                                                                   fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
                                                                   ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1);
     
-   
-    return m2,m1,M2_size,M1_size;   
+    func2=make_zernike(Zernike_order,m2.x/3000,(m2.y+0.0)/3000,dtype='torch',device=DEVICE);
+    func1=make_zernike(Zernike_order,m1.x/3000,(m1.y-0.0)/3000,dtype='torch',device=DEVICE);
+    # 3. prepared the matrixes for 4 receiver locations;
+    print('0') 
+    source=Coord();
+    source0=np.genfromtxt(sourcefile+'/pos_pos_near.txt');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_s,Field_fimag,Field_m1,Field_m2_0,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus0,source,k,Angle_taper,edge_taper,Keepmatrix=True);
     
-
-
-
-
-
-
-# In[ ]:
-
-
-
-
+    
+    Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0=DATA2CUDA(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+   
+    print('1');
+    source0=np.genfromtxt(sourcefile+'/pos_neg_near.txt');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_s,Field_fimag,Field_m1,Field_m2_1,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus1,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1=DATA2CUDA(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,DEVICE=DEVICE);
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('2');
+    source0=np.genfromtxt(sourcefile+'/neg_pos_near.txt');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_s,Field_fimag,Field_m1,Field_m2_2,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus2,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2=DATA2CUDA(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1,aperture)
+    
+    print('3');
+    source0=np.genfromtxt(sourcefile+'/neg_neg_near.txt');
+    source.x=source0[...,0];source.y=source0[...,1];source.z=source0[...,2];
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_s,Field_fimag,Field_m1,Field_m2_3,aperture=First_computing(m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA,defocus3,source,k,Angle_taper,edge_taper,Keepmatrix=True);
+    
+    Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture=DATA2CUDA(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,aperture,DEVICE=DEVICE)
+    del(Field_s,Field_fimag,Field_m1)
+    #ad2_x,ad2_y,ad1_x,ad1_y=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1);
+    List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE0);
+    
+    def fitfuc(coeffi2,coeffi1,Para_A,Para_p):        
+        R0=fitting_func_zernike(Matrix21_0,Matrix3_0,cosm2_i_0,cosm2_r_0,cosm1_i_0,cosm1_r_0,Field_m2_0,coeffi2,coeffi1,func2,func1,k,Para_A[0:6],Para_p[0:5],aperture/3000);
+        R1=fitting_func_zernike(Matrix21_1,Matrix3_1,cosm2_i_1,cosm2_r_1,cosm1_i_1,cosm1_r_1,Field_m2_1,coeffi2,coeffi1,func2,func1,k,Para_A[6:6*2],Para_p[5:5*2],aperture/3000);
+        R2=fitting_func_zernike(Matrix21_2,Matrix3_2,cosm2_i_2,cosm2_r_2,cosm1_i_2,cosm1_r_2,Field_m2_2,coeffi2,coeffi1,func2,func1,k,Para_A[6*2:6*3],Para_p[5*2:5*3],aperture/3000);
+        R3=fitting_func_zernike(Matrix21_3,Matrix3_3,cosm2_i_3,cosm2_r_3,cosm1_i_3,cosm1_r_3,Field_m2_3,coeffi2,coeffi1,func2,func1,k,Para_A[6*3:],Para_p[5*3:],aperture/3000);
+        R=T.cat((R0,R1,R2,R3));        
+        return R; 
+    
+    
+    
+    return fitfuc#,ad2_x,ad2_y,ad1_x,ad1_y;    

@@ -98,10 +98,9 @@ def error_ff(adjuster,List,p,q,m):
 '''
 3.  DATA pre-processing corrected the beam pattern by the center point in the map;
 '''
-'''
-def correctphase(data,DEVICE0=T.device('cpu')): 
+def correctphase(data,DEVICE=DEVICE0): 
     N_angle=int(np.sqrt(data.size()[1]));
-    data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE0);
+    data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE);
     for i in range(0,data.size()[0]-1,2):
         
         Phase0=T.atan2(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)],data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)])
@@ -114,23 +113,15 @@ def correctphase(data,DEVICE0=T.device('cpu')):
         data1[i+1,...]=data[i,...]*s+data[i+1,...]*c;
         
     return data1;
-'''
 
-def correctphase(data,DEVICE0=T.device('cpu')): 
+
+def correctphase2(data, DEVICE=DEVICE0): 
     N_angle=int(np.sqrt(data.size()[1]));
-    data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE0);
+    data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE);
     for i in range(0,data.size()[0]-1,2):
-        
-        Phase0=T.atan2(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)],data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)])
-        #Amp0=T.sqrt(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2+data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2)
-        Amp0=T.sqrt((data[i,...]**2+data[i+1,...]**2).sum());
-        
-        
-        c=1/Amp0*T.cos(-Phase0);
-        s=1/Amp0*T.sin(-Phase0);
-        
-        data1[i,...]=data[i,...]*c-data[i+1,...]*s;
-        data1[i+1,...]=data[i,...]*s+data[i+1,...]*c;
+        Amp0=T.sqrt((data[i,...]**2+data[i+1,...]**2).sum())
+        data1[i,...]=data[i,...]/Amp0
+        data1[i+1,...]=data[i+1,...]/Amp0
         
     return data1;
 
@@ -180,6 +171,64 @@ def fitting_func(M1,M3,# two perpared matrixes;
     y=aperture_xy[1,...].reshape(Field_m1.real.size());
     
     Rm=amp*(1+u*x+v*y+w*x*y+s*x**2+t*y**2);   
+    phi=phi0+a*x+b*y+c*(x**2)+d*(y**2);   
+    #phi=phi0+a*x+b*y+c*(x**2+y**2)+d*x*y;          
+    
+    Phase=T.atan2(Field_m1.imag,Field_m1.real)+phi;
+    Phase=Phase+k*(dz1*(cosm1_i.view(1,-1))+dz1*cosm1_r.view(1,-1)); # corrected the phase on m1 based on dz of mirror
+    Amp=T.sqrt(Field_m1.real**2+Field_m1.imag**2)*Rm;
+    
+    Field.real=Amp*T.cos(Phase);
+    Field.imag=Amp*T.sin(Phase);
+    
+    Field_s=Complex();
+    Field_s.real=(T.mm(M3.real,Field.real.view(-1,1))-T.mm(M3.imag,Field.imag.view(-1,1))).view(1,-1);
+    Field_s.imag=(T.mm(M3.imag,Field.real.view(-1,1))+T.mm(M3.real,Field.imag.view(-1,1))).view(1,-1);
+     
+    data=T.cat((Field_s.real,Field_s.imag))
+    
+    return data;    
+
+'''
+5. fitting zernike
+'''
+def fitting_func_zernike(M1,M3,# two perpared matrixes;
+                 cosm2_i,cosm2_r,cosm1_i,cosm1_r,# reflection and incident angles;
+                 Field_m2,coeffi2,coeffi1,fuc2,fuc1,# input the field on m2
+                 k,Para_A,Para_p,aperture_xy):
+    '''
+    # parameters for large scale error in amplitude;
+    Amp*(1+u*x,v*y+w*x*y+s*x^2+t*y^2);
+    phi=phi0+a*x+b*y+c*(x**2)+d*(y**2); 
+    '''
+    amp=Para_A[0];u=Para_A[1];v=Para_A[2];w=Para_A[3];s=Para_A[4];t=Para_A[5];
+    # phase terms caused by the large-scale error
+    phi0=Para_p[0];a=Para_p[1];b=Para_p[2];c=Para_p[3];d=Para_p[4];
+        
+    
+   
+    # distorted of panels;
+    dz1=fuc1(coeffi1)
+    dz2=fuc2(coeffi2)
+    
+        
+    Phase=T.atan2(Field_m2.imag,Field_m2.real);
+    Phase=Phase+k*(dz2*(cosm2_i.view(1,-1))+dz2*cosm2_r.view(1,-1)); # corrected the phase on m2 based on dz of mirror
+    Amp=T.sqrt(Field_m2.real**2+Field_m2.imag**2);
+    
+    Field=Complex();
+    Field.real=Amp*T.cos(Phase);
+    Field.imag=Amp*T.sin(Phase);
+    # get field on m1
+    Field_m1=Complex();
+    Field_m1.real=(T.mm(M1.real,Field.real.view(-1,1))-T.mm(M1.imag,Field.imag.view(-1,1))).view(1,-1);
+    Field_m1.imag=(T.mm(M1.imag,Field.real.view(-1,1))+T.mm(M1.real,Field.imag.view(-1,1))).view(1,-1);
+    # aperture coordinates xy 
+    
+    x=aperture_xy[0,...].reshape(Field_m1.real.size());
+    y=aperture_xy[1,...].reshape(Field_m1.real.size());
+    
+    Rm=amp*(1+u*x+v*y+w*x*y+s*x**2+t*y**2);   
     phi=phi0+a*x+b*y+c*(x**2)+d*(y**2);            
     
     
@@ -198,5 +247,4 @@ def fitting_func(M1,M3,# two perpared matrixes;
        
     data=T.cat((Field_s.real,Field_s.imag))
     
-    return data;    
-
+    return data; 
