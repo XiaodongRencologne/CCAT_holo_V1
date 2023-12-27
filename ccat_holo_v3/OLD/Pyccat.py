@@ -57,7 +57,7 @@ def read_input(inputfile):
     R2=parameters[4];R1=parameters[5];
     p_m2=parameters[6];q_m2=parameters[7];
     p_m1=parameters[8];q_m1=parameters[9];
-    M2_N=parameters[10:12];M1_N=parameters[12:14]
+    M2_N=parameters[10:12].astype(int);M1_N=parameters[12:14].astype(int)
     fimag_N=parameters[14:16];fimag_size=parameters[16:18]
     distance=parameters[18];
     freq=electro_params[0]*10**9;
@@ -132,9 +132,9 @@ def model_ccat(coefficient_m2,List_m2,M2_sizex,M2_sizey,M2_Nx,M2_Ny,R2,# m2
     
     surface_m2=profile(coefficient_m2,R2);# define the surface function of m2;
     surface_m1=profile(coefficient_m1,R1);# define the surface function of m1;    
-    m2,m2_n,m2_dA=squarepanel(List_m2[...,0],List_m2[...,1],M2_sizex,M2_sizey,M2_Nx,M2_Ny,surface_m2);
-    m1,m1_n,m1_dA=squarepanel(List_m1[...,0],List_m1[...,1],M1_sizex,M1_sizey,M1_Nx,M1_Ny,surface_m1);
-    fimag,fimag_n,fimag_dA=ImagPlane(Rangex,Rangey,fimag_Nx,fimag_Ny);
+    m2,m2_n,m2_dA=squarepanel(List_m2[...,0],List_m2[...,1],M2_sizex,M2_sizey,M2_Nx,M2_Ny,surface_m2)
+    m1,m1_n,m1_dA=squarepanel(List_m1[...,0],List_m1[...,1],M1_sizex,M1_sizey,M1_Nx,M1_Ny,surface_m1)
+    fimag,fimag_n,fimag_dA=ImagPlane(Rangex,Rangey,fimag_Nx,fimag_Ny)
     
     # modified the panel based on the initial adjusters distribution;
     Panel_N_m2=int(List_m2.size/2)
