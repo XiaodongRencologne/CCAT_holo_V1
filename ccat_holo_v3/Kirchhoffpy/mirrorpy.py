@@ -11,6 +11,7 @@ Package used to build mirror model based on 'uniform sampling' and 'Gaussian qua
 """
 
 import numpy as np;
+import scipy
 import torch as T;
 from .coordinate_operations import Coord;
 

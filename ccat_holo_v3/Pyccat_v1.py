@@ -32,25 +32,26 @@ from Kirchhoffpy.inference import fitting_func, fitting_func_zernike
 c=299792458*1000
 
 holo_setup={'Rx0':([0,0,600],'beam/on-axis.txt'),
-            'Rx1':([400,400,600],'beam/on-axis.txt'),
-            'Rx2':([400,-400,600],'beam/on-axis.txt'),
-            'Rx3':([-400,400,600],'beam/on-axis.txt'),
-            'Rx4':([-400,-400,600],'beam/on-axis.txt')
+            'Rx1':([400,400,600],'beam/400_400_600.txt'),
+            'Rx2':([400,-400,600],'beam/400_-400_600.txt'),
+            'Rx3':([-400,400,600],'beam/-400_400_600.txt'),
+            'Rx4':([-400,-400,600],'beam/-400_-400_600.txt')
             }
 
 class CCAT_holo():
     def __init__(self,Model_folder,output_folder,holo_conf=holo_setup,input_Rx_beam=Gaussibeam):
         self.output_folder=output_folder
         self.holo_conf=holo_conf
+        self.output_filename=None
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
         M1_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m1.txt',delimiter=',')
-        R2=3000 # normlization factor
-        R1=3000
+        self.R2=3000 # normlization factor
+        self.R1=3000
         # the 2D polynomial surface  
-        self.surface_m2=profile(M2_poly_coeff,R2)
-        self.surface_m1=profile(M1_poly_coeff,R1)
+        self.surface_m2=profile(M2_poly_coeff,self.R2)
+        self.surface_m1=profile(M1_poly_coeff,self.R1)
 
         # panel size, center, and number of sampling points on each panel
         self.Panel_center_M2=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',')
@@ -62,12 +63,12 @@ class CCAT_holo():
         self.M2_N=parameters[10:12].astype(int)
         self.M1_N=parameters[12:14].astype(int)
 
-        self.m2,self.m2_n,self.m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
+        self.m2_0,self.m2_n,self.m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
                                                     self.M2_size[0],self.M2_size[1],
                                                     self.M2_N[0],self.M2_N[1],
                                                     self.surface_m2
                                                     )
-        self.m1,self.m1_n,self.m1_dA=squarepanel(self.Panel_center_M1[...,0],self.Panel_center_M1[...,1],
+        self.m1_0,self.m1_n,self.m1_dA=squarepanel(self.Panel_center_M1[...,0],self.Panel_center_M1[...,1],
                                                     self.M1_size[0],self.M1_size[1],
                                                     self.M1_N[0],self.M1_N[1],
                                                     self.surface_m1
@@ -78,12 +79,13 @@ class CCAT_holo():
         self.p_m1=parameters[8]
         self.q_m1=parameters[9]
 
-        ad2_x,ad2_y,ad1_x,ad1_y=adjuster(self.Panel_center_M2,self.Panel_center_M1,
-                                         self.p_m2,self.q_m2,
-                                         self.p_m1,self.q_m1,
-                                         R2,R1)
+        self.S2_x,self.S2_y,self.S1_x,self.S1_y=adjuster(self.Panel_center_M2,self.Panel_center_M1,
+                                                         self.p_m2,self.q_m2,
+                                                         self.p_m1,self.q_m1,
+                                                         self.R2,self.R1
+                                                         )
         
-        self.S_m2_x=T.tensor()
+        
         
         np.append(ad2_x,ad2_y).reshape(2,-1)
         self.S_m1_xy=np.append(ad1_x,ad1_y).reshape(2,-1)
@@ -102,13 +104,14 @@ class CCAT_holo():
         self.Angle_taper=electro_params[2]/180*np.pi
         self.Lambda=c/self.freq
         self.k=2*np.pi/self.Lambda
-
+        # beam profile of the feedhorn of the receiver
         self.input_feed_beam=input_Rx_beam
+        
 
-        self.coords(Rx=[0,0,0])
+        self._coords(Rx=[0,0,0])
 
 
-    def coords(self,Rx=[0,0,0]):
+    def _coords(self,Rx=[0,0,0]):
         '''coordinates systems'''
         '''
         #angle# is angle change of local coordinates and global coordinates;
@@ -154,7 +157,7 @@ class CCAT_holo():
         self.angle_f=[np.pi/2,0,0];    
         self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
 
-    def _beam(self,scan_file,Rx=[0,0,0],Matrix=False):
+    def _beam(self,scan_file,Rx=[0,0,0],Matrix=False,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77))):
         Feed_beam=self.input_feed_beam
         trace=np.genfromtxt(scan_file,delimiter=',')
         scan_pattern=Coord()
@@ -163,9 +166,11 @@ class CCAT_holo():
         scan_pattern.z=trace[:,2]
 
         ''' first beam pattern calculation'''
-        self.filename=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        
         # Set receiver location
-        self.coords(Rx=Rx)
+        self._coords(Rx=Rx)
+
+        # create M1 M2 & IF plane model.
         self.m2,self.m2_n,self.m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
                                                     self.M2_size[0],self.M2_size[1],
                                                     self.M2_N[0],self.M2_N[1],
@@ -179,6 +184,10 @@ class CCAT_holo():
         self.fimag,self.fimag_n,self.fimag_dA=ImagPlane(self.fimag_size[0],self.fimag_size[1],
                                                         self.fimag_N[0],self.fimag_N[1]  
                                                         )
+        # Misalignment of panel adjusters
+        self.m2.z=self.m2.z+deformation(S2_init.ravel(),self.Panel_center_M2,self.p_m2,self.q_m2,self.m2)
+        self.m1.z=self.m1.z-deformation(S1_init.ravel(),self.Panel_center_M1,self.p_m1,self.q_m1,self.m1)
+
         start=time.perf_counter()
         # 1. convert MIRROR 2 into global coordinate system
         m2=local2global(self.angle_m2,self.D_m2,self.m2)
@@ -251,7 +260,8 @@ class CCAT_holo():
         print('time used:',elapsed)
         # Save the computation data into h5py file, and the intermediate Matrixs that wil
         # be used for accelerating the forward beam calculations.
-        with h5py.File(self.filename,'w') as f:
+        self.output_filename=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        with h5py.File(self.output_filename,'w') as f:
               f.create_dataset('M21_real',data=Matrix21.real)
               f.create_dataset('M21_imag',data=Matrix21.imag)
               f.create_dataset('M3_real',data=Matrix3.real)
@@ -275,43 +285,46 @@ class CCAT_holo():
 
     def plot_beam(self,filename=None):
         if filename==None:
-            filename=self.filename
+            filename=self.output_filename
         else:
             pass
-        with h5py.File(filename,'r') as f:
-            beam=f['F_beam_real'][:]+1j*f['F_beam_imag'][:]
-            NN=int(np.sqrt(f['scan_pattern'][0,:].size))
-            x=f['scan_pattern'][0,:].reshape(NN,-1)
-            y=f['scan_pattern'][1,:].reshape(NN,-1)
-        beam=beam.reshape(NN,-1)
-        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-        cmap='jet'
-        p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
-        axs[0].axis('equal')
-        p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
-        axs[1].axis('equal')
-        plt.show()
+        if filename==None:
+            print('No input data!!!')
+            pass
+        else:
+            with h5py.File(filename,'r') as f:
+                beam=f['F_beam_real'][:]+1j*f['F_beam_imag'][:]
+                NN=int(np.sqrt(f['scan_pattern'][0,:].size))
+                x=f['scan_pattern'][0,:].reshape(NN,-1)
+                y=f['scan_pattern'][1,:].reshape(NN,-1)
+            beam=beam.reshape(NN,-1)
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            cmap='jet'
+            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+            axs[0].axis('equal')
+            p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
+            axs[1].axis('equal')
+            plt.show()
 
-        fig, axs = plt.subplots(1, 2, figsize=(15, 5))
-        cmap='jet'
-        p1=axs[0].plot(x[50,:],20*np.log10(np.abs(beam[50,:])))
-        p2=axs[1].plot(x[50,:],np.angle(beam[50,:])*180/np.pi,'*-')
-        plt.show()
-        print(beam.real)
-        print(beam.imag)
+            fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+            cmap='jet'
+            p1=axs[0].plot(x[50,:],20*np.log10(np.abs(beam[50,:])))
+            p2=axs[1].plot(x[50,:],np.angle(beam[50,:])*180/np.pi,'*-')
+            plt.show()
+            print(beam.real)
+            print(beam.imag)
 
-    def Set_Holo(self,):
+    def Set_Holo(self,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77))):
         if self.holo_conf==None:
             print('set up the holographic configuration, e.g. Rx positions & the related scanning tracjectory!')
             pass
         else:
             print('The holographic setup:')
             for keys in self.holo_conf:
-                print(keys,':',self.holo_conf[keys][1],self.holo_conf[keys][1])
+                print(keys,':',self.holo_conf[keys][0],self.holo_conf[keys][1])
 
-            print('Computer the ')
-            
-
-            
-            
-
+            print('Start the initial beam calculations \n')
+            print('and prepare the required Matrixes used to speed up the forward beam calculations.')
+            for keys in self.holo_conf:
+                print(keys,':',self.holo_conf[keys][0],self.holo_conf[keys][1])
+                self._beam(self.holo_conf[keys][1],Rx=self.holo_conf[keys][0],Matrix=True,S2_init=S2_init,S1_init=S1_init)
