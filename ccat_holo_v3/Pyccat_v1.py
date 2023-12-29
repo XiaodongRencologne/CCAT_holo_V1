@@ -1,4 +1,5 @@
 import numpy as np
+import torch as T
 import time
 import h5py
 import matplotlib.pyplot as plt
@@ -10,8 +11,6 @@ from Kirchhoffpy.mirrorpy import profile,squarepanel,deformation,ImagPlane,adjus
 # 'ImagPlane' is used to define the sampling range of IF field plane.
 from Kirchhoffpy.coordinate_operations import Coord
 from Kirchhoffpy.coordinate_operations import Transform_local2global as local2global
-from Kirchhoffpy.coordinate_operations import Transform_global2local as global2local
-from Kirchhoffpy.coordinate_operations import cartesian_to_spherical as cart2spher
 # geometry models are smampled by discrete points. Coordinates of the points 
 # are expressed by Coord.x, Coord.y, Coord.z
 # other functions are known from theirs names used for transformations between coordinate
@@ -24,12 +23,25 @@ from Kirchhoffpy.Feedpy import Gaussibeam
 
 from Kirchhoffpy.zernike_torch import mkCFn as make_zernike;
 from Kirchhoffpy.zernike_torch import N as poly_N;
+
+from Kirchhoffpy.inference import DATA2CUDA, correctphase2
+from Kirchhoffpy.inference import fitting_func, fitting_func_zernike
+
+
 # surface errors expressed by zernike polynomials.
 c=299792458*1000
 
+holo_setup={'Rx0':([0,0,600],'beam/on-axis.txt'),
+            'Rx1':([400,400,600],'beam/on-axis.txt'),
+            'Rx2':([400,-400,600],'beam/on-axis.txt'),
+            'Rx3':([-400,400,600],'beam/on-axis.txt'),
+            'Rx4':([-400,-400,600],'beam/on-axis.txt')
+            }
+
 class CCAT_holo():
-    def __init__(self,Model_folder,output_folder):
+    def __init__(self,Model_folder,output_folder,holo_conf=holo_setup,input_Rx_beam=Gaussibeam):
         self.output_folder=output_folder
+        self.holo_conf=holo_conf
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
@@ -66,8 +78,16 @@ class CCAT_holo():
         self.p_m1=parameters[8]
         self.q_m1=parameters[9]
 
-        self.S_m2_xy=None
-        self.S_m1_xy=None
+        ad2_x,ad2_y,ad1_x,ad1_y=adjuster(self.Panel_center_M2,self.Panel_center_M1,
+                                         self.p_m2,self.q_m2,
+                                         self.p_m1,self.q_m1,
+                                         R2,R1)
+        
+        self.S_m2_x=T.tensor()
+        
+        np.append(ad2_x,ad2_y).reshape(2,-1)
+        self.S_m1_xy=np.append(ad1_x,ad1_y).reshape(2,-1)
+        del(ad2_x,ad2_y,ad1_x,ad1_y)
         
         # Intermedia plane
         self.fimag_N=parameters[14:16]
@@ -83,10 +103,12 @@ class CCAT_holo():
         self.Lambda=c/self.freq
         self.k=2*np.pi/self.Lambda
 
-        self.coords(defocus=[0,0,0])
+        self.input_feed_beam=input_Rx_beam
+
+        self.coords(Rx=[0,0,0])
 
 
-    def coords(self,defocus=[0,0,0]):
+    def coords(self,Rx=[0,0,0]):
         '''coordinates systems'''
         '''
         #angle# is angle change of local coordinates and global coordinates;
@@ -112,9 +134,9 @@ class CCAT_holo():
         
         self.angle_fimag=[-Theta_0,0,0];        #  4. fimag and global co-ordinates
         defocus_fimag=[0,0,0]
-        defocus_fimag[2]=1/(1/F-1/(Ls+defocus[2]))+L_fimag
-        defocus_fimag[1]=(F+L_fimag-defocus_fimag[2])/F*defocus[1]
-        defocus_fimag[0]=(F+L_fimag-defocus_fimag[2])/F*defocus[0]
+        defocus_fimag[2]=1/(1/F-1/(Ls+Rx[2]))+L_fimag
+        defocus_fimag[1]=(F+L_fimag-defocus_fimag[2])/F*Rx[1]
+        defocus_fimag[0]=(F+L_fimag-defocus_fimag[2])/F*Rx[0]
         self.D_fimag=[0,0,0]
         self.D_fimag[0]=defocus_fimag[0]
         self.D_fimag[1]=defocus_fimag[1]*np.cos(Theta_0)\
@@ -130,9 +152,10 @@ class CCAT_holo():
         D_f=[defocus[0],Ls+defocus[2]-Lm*np.sin(Theta_0),-defocus[1]];
         '''
         self.angle_f=[np.pi/2,0,0];    
-        self.D_f=[defocus[0],Ls+defocus[2]-Lm*np.sin(Theta_0),-defocus[1]] 
+        self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
 
-    def beam(self,scan_file,defocus=[0,0,0],Feed_beam=Gaussibeam,Matrix=False):
+    def _beam(self,scan_file,Rx=[0,0,0],Matrix=False):
+        Feed_beam=self.input_feed_beam
         trace=np.genfromtxt(scan_file,delimiter=',')
         scan_pattern=Coord()
         scan_pattern.x=trace[:,0]
@@ -140,9 +163,9 @@ class CCAT_holo():
         scan_pattern.z=trace[:,2]
 
         ''' first beam pattern calculation'''
-        filename=self.output_folder+'/data_Rx_dx'+str(defocus[0])+'_dy'+str(defocus[1])+'_dz'+str(defocus[2])+'.h5py'
+        self.filename=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
         # Set receiver location
-        self.coords(defocus=defocus)
+        self.coords(Rx=Rx)
         self.m2,self.m2_n,self.m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
                                                     self.M2_size[0],self.M2_size[1],
                                                     self.M2_N[0],self.M2_N[1],
@@ -203,6 +226,17 @@ class CCAT_holo():
                                         Keepmatrix=Matrix
                                         )
         del(cosm)
+
+        '''
+        emerging m1 and m2 to m12
+        '''    
+        Matrix21=Complex()
+        if Matrix:
+            Matrix21.real=np.matmul(Matrix2.real,Matrix1.real)-np.matmul(Matrix2.imag,Matrix1.imag)
+            Matrix21.imag=np.matmul(Matrix2.real,Matrix1.imag)+np.matmul(Matrix2.imag,Matrix1.real)
+        else:
+            pass
+        del(Matrix2,Matrix1)
         
         #5. calculate the field in the source range;
         source=local2global(self.angle_s,self.D_s,scan_pattern)
@@ -213,23 +247,16 @@ class CCAT_holo():
                                           Keepmatrix=Matrix
                                           )
         
-        '''
-        emerging m1 and m2 to m12
-        '''    
-        Matrix21=Complex()
-        if Matrix:
-            Matrix21.real=np.matmul(Matrix2.real,Matrix1.real)-np.matmul(Matrix2.imag,Matrix1.imag)
-            Matrix21.imag=np.matmul(Matrix2.real,Matrix1.imag)+np.matmul(Matrix2.imag,Matrix1.real)
-        else:
-            pass
-    
         elapsed =(time.perf_counter()-start)
         print('time used:',elapsed)
-        with h5py.File(filename,'w') as f:
+        # Save the computation data into h5py file, and the intermediate Matrixs that wil
+        # be used for accelerating the forward beam calculations.
+        with h5py.File(self.filename,'w') as f:
               f.create_dataset('M21_real',data=Matrix21.real)
               f.create_dataset('M21_imag',data=Matrix21.imag)
               f.create_dataset('M3_real',data=Matrix3.real)
               f.create_dataset('M3_imag',data=Matrix3.imag)
+              del(Matrix21,Matrix3)
               f.create_dataset('cosm2_i',data=cosm2_i)
               f.create_dataset('cosm2_r',data=cosm2_r)
               f.create_dataset('cosm1_i',data=cosm1_i)
@@ -241,23 +268,50 @@ class CCAT_holo():
               f.create_dataset('F_if_real',data=Field_fimag.real)
               f.create_dataset('F_if_imag',data=Field_fimag.imag)
               f.create_dataset('F_beam_real',data=Field_s.real)
-              f.create_dataset('F_beam_imag',data=Field_s.real)
+              f.create_dataset('F_beam_imag',data=Field_s.imag)
               f.create_dataset('aperture',data=self.aperture_xy)
               f.create_dataset('scan_pattern',data=np.concatenate((source.x,
                                                                    source.y,source.z)).reshape(3,-1))
 
-    def plot_beam(self,defocus=[0,0,0]):
-        filename=self.output_folder+'data_Rx_dx'+str(defocus[0])+'_dy'+str(defocus[1])+'_dz'+str(defocus[2])
+    def plot_beam(self,filename=None):
+        if filename==None:
+            filename=self.filename
+        else:
+            pass
         with h5py.File(filename,'r') as f:
             beam=f['F_beam_real'][:]+1j*f['F_beam_imag'][:]
-            NN=int(np.sqrt(f['scan_pattern'][:].size))
-            xyz=f['scan_pattern'][:]
-            x=xyz[0,:].reshape(NN,-1)
-            y=xyz[1,:].reshape(NN,-1)
-            del(xyz)
+            NN=int(np.sqrt(f['scan_pattern'][0,:].size))
+            x=f['scan_pattern'][0,:].reshape(NN,-1)
+            y=f['scan_pattern'][1,:].reshape(NN,-1)
         beam=beam.reshape(NN,-1)
-        fig, axs = plt.subplots(1, 2, figsize=(9, 3))
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
         cmap='jet'
-        p1=axs[0].pcolor(x,y,20*np.log10(beam),cmap='jet')
-        p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet')
-        fig.show()
+        p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+        axs[0].axis('equal')
+        p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
+        axs[1].axis('equal')
+        plt.show()
+
+        fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+        cmap='jet'
+        p1=axs[0].plot(x[50,:],20*np.log10(np.abs(beam[50,:])))
+        p2=axs[1].plot(x[50,:],np.angle(beam[50,:])*180/np.pi,'*-')
+        plt.show()
+        print(beam.real)
+        print(beam.imag)
+
+    def Set_Holo(self,):
+        if self.holo_conf==None:
+            print('set up the holographic configuration, e.g. Rx positions & the related scanning tracjectory!')
+            pass
+        else:
+            print('The holographic setup:')
+            for keys in self.holo_conf:
+                print(keys,':',self.holo_conf[keys][1],self.holo_conf[keys][1])
+
+            print('Computer the ')
+            
+
+            
+            
+
