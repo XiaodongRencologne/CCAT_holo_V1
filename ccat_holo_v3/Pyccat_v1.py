@@ -375,22 +375,52 @@ class CCAT_holo():
         
         if fitting_param=='panel adjusters':
             def FF(Adjusters,Para_A,Para_p):
-                R0=fitting_func(*Vars['Rx0'],Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[0:6],Para_p[0:5],Aperture)
-                R1=fitting_func(*Vars['Rx1'],Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6:6*2],Para_p[5:5*2],Aperture)
-                R2=fitting_func(*Vars['Rx2'],Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
-                R3=fitting_func(*Vars['Rx3'],Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
-                R4=fitting_func(*Vars['Rx4'],Adjusters,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*4:],Para_p[5*4:],Aperture)
+                R0=fitting_func(*Vars['Rx0'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[0:6],Para_p[0:5],Aperture)
+                R1=fitting_func(*Vars['Rx1'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                R2=fitting_func(*Vars['Rx2'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                R3=fitting_func(*Vars['Rx3'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
+                R4=fitting_func(*Vars['Rx4'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6*4:],Para_p[5*4:],Aperture)
                 return T.cat((R0,R1,R2,R3,R4))
             self.FF=FF
         elif fitting_param=='zernike':
-            self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=DEVICE)
-            self.Z_surf1=make_zernike(Z_order,m1.x/self.R1,(m1.y-0.0)/self.R1,dtype='torch',device=DEVICE)
+            self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=Device)
+            self.Z_surf1=make_zernike(Z_order,m1.x/self.R1,(m1.y-0.0)/self.R1,dtype='torch',device=Device)
             def FF(Z_coeff2,Z_coeff1,Para_A,Para_p):
-                R0=fitting_func_zernike(*Vars['Rx0'],Z_coeff2,Z_coeff1,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[0:6],Para_p[0:5],Aperture)
-                R1=fitting_func_zernike(*Vars['Rx1'],Z_coeff2,Z_coeff1,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6:6*2],Para_p[5:5*2],Aperture)
-                R2=fitting_func_zernike(*Vars['Rx2'],Z_coeff2,Z_coeff1,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
-                R3=fitting_func_zernike(*Vars['Rx3'],Z_coeff2,Z_coeff1,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
-                R4=fitting_func_zernike(*Vars['Rx4'],Z_coeff2,Z_coeff1,List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,Para_A[6*4:],Para_p[5*4:],Aperture)
+                R0=fitting_func_zernike(*Vars['Rx0'],
+                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[0:6],Para_p[0:5],Aperture)
+                R1=fitting_func_zernike(*Vars['Rx1'],
+                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                R2=fitting_func_zernike(*Vars['Rx2'],
+                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                R3=fitting_func_zernike(*Vars['Rx3'],
+                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
+                R4=fitting_func_zernike(*Vars['Rx4'],
+                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6*4:],Para_p[5*4:],Aperture)
                 return T.cat((R0,R1,R2,R3,R4))
             self.FF=FF
         else:
