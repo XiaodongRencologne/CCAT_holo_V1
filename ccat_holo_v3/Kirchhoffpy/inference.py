@@ -31,7 +31,7 @@ class Complex:
 '''
 1. convert all of the data type to GPU OR 
 '''
-def DATA2CUDA(*arguments,DEVICE):
+def DATA2TORCH(*arguments,DEVICE):
     Argu=(());
     for data in arguments:
         if isinstance(data,T.Tensor):
