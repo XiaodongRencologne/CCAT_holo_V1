@@ -249,3 +249,50 @@ def fitting_func_zernike(M1,M3,# two perpared matrixes;
     data=T.cat((Field_s.real,Field_s.imag))
     
     return data; 
+
+
+'''
+
+6. function used for fitting loop. and we use zernike polynominals to describe the feed horn phase pattern;
+'''
+def fitting_func_zernik_Feed(M1,M3,# two perpared matrixes;
+                 cosm2_i,cosm2_r,cosm1_i,cosm1_r,# reflection and incident angles;
+                 Field_m2,# input the field on m2
+                 Para_f,errorFn,
+                 k,Para_A,aperture_xy):
+    '''
+    # parameters for large scale error in amplitude
+    Amp*(1+u*x,v*y+w*x*y+s*x^2+t*y^2)
+    phi=phi0+a*x+b*y+c*(x**2)+d*(y**2) 
+    '''
+    amp=Para_A[0];u=Para_A[1];v=Para_A[2];w=Para_A[3];s=Para_A[4];t=Para_A[5]
+    
+    # 1. phase corrected by the error phase of horn
+    Phase=T.atan2(Field_m2.imag,Field_m2.real)
+    Phase=Phase+errorFn(Para_f)
+    Amp=T.sqrt(Field_m2.real**2+Field_m2.imag**2)
+    
+    Field=Complex()
+    Field.real=Amp*T.cos(Phase)
+    Field.imag=Amp*T.sin(Phase)
+    # get field on m1
+    Field_m1=Complex();
+    Field_m1.real=(T.mm(M1.real,Field.real.view(-1,1))-T.mm(M1.imag,Field.imag.view(-1,1))).view(1,-1);
+    Field_m1.imag=(T.mm(M1.imag,Field.real.view(-1,1))+T.mm(M1.real,Field.imag.view(-1,1))).view(1,-1);
+    # aperture coordinates xy     
+    x=aperture_xy[0,...].reshape(Field_m1.real.size());
+    y=aperture_xy[1,...].reshape(Field_m1.real.size());    
+    Rm=amp*(1+u*x+v*y+w*x*y+s*x**2+t*y**2);             
+    
+    Field.real=Rm*Field_m1.real;
+    Field.imag=Rm*Field_m1.imag;
+    
+    Field_s=Complex();
+    Field_s.real=(T.mm(M3.real,Field.real.view(-1,1))-T.mm(M3.imag,Field.imag.view(-1,1))).view(1,-1);
+    Field_s.imag=(T.mm(M3.imag,Field.real.view(-1,1))+T.mm(M3.real,Field.imag.view(-1,1))).view(1,-1);
+    
+    
+       
+    data=T.cat((Field_s.real,Field_s.imag))
+    
+    return data;
