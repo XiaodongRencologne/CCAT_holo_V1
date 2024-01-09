@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.optimize
 import torch as T
 import time
 import h5py
@@ -31,11 +32,11 @@ from Kirchhoffpy.inference import fitting_func, fitting_func_zernike
 # surface errors expressed by zernike polynomials.
 c=299792458*1000
 
-holo_setup={'Rx0':([0,0,600],'beam/on-axis.txt'),
-            'Rx1':([400,400,600],'beam/400_400_600.txt'),
-            'Rx2':([400,-400,600],'beam/400_-400_600.txt'),
-            'Rx3':([-400,400,600],'beam/-400_400_600.txt'),
-            'Rx4':([-400,-400,600],'beam/-400_-400_600.txt')
+holo_setup={'Rx1':([0,0,600],'beam/on-axis.txt'),
+            'Rx2':([400,400,600],'beam/400_400_600.txt'),
+            'Rx3':([400,-400,600],'beam/400_-400_600.txt'),
+            'Rx4':([-400,400,600],'beam/-400_400_600.txt'),
+            'Rx5':([-400,-400,600],'beam/-400_-400_600.txt')
             }
 
 def Load_Mat(filename):
@@ -56,6 +57,7 @@ def Load_Mat(filename):
     return M21,M3,cosm2_i,cosm2_r,cosm1_i,cosm1_r,F_m2
 class CCAT_holo():
     def __init__(self,Model_folder,output_folder,holo_conf=holo_setup,input_Rx_beam=Gaussibeam):
+        self.Model_folder=Model_folder
         self.output_folder=output_folder
         self.holo_conf=holo_conf
         self.output_filename=None
@@ -128,11 +130,18 @@ class CCAT_holo():
         '''
         some germetrical parametrs
         '''
-        Theta_0  =  0.927295218001612; # offset angle of MR;
-        Ls       =  12000.0;           # distance between focal point and SR
-        Lm       =  6000.0;            # distance between MR and SR;
-        L_fimag  = 18000+Ls
-        F        = 20000               # equivalent focal length of M2
+
+        #Theta_0  =  0.927295218001612; # offset angle of MR;
+        #Ls       =  12000.0;           # distance between focal point and SR
+        #Lm       =  6000.0;            # distance between MR and SR;
+        #L_fimag  = 18000+Ls
+        #F        = 20000               # equivalent focal length of M2
+        data=np.genfromtxt(self.Model_folder+'/coord.txt',delimiter=',')[:,1]
+        Theta_0=data[0]
+        Ls=data[1]
+        Lm=data[2]
+        L_fimag=data[3]
+        F=data[4]
 
         self.angle_m2=[-(np.pi/2+Theta_0)/2,0,0] #  1. m2 and global co-ordinates
         self.D_m2=[0,-Lm*np.sin(Theta_0),0]
@@ -281,6 +290,7 @@ class CCAT_holo():
         self.output_filename=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
         with h5py.File(self.output_filename,'w') as f:
               #f.create_dataset('conf',data=(Rx,scan_file))
+              f.create_dataset('freq (GHz)',data=self.freq)
               f.create_dataset('M21_real',data=Matrix21.real)
               f.create_dataset('M21_imag',data=Matrix21.imag)
               f.create_dataset('M3_real',data=Matrix3.real)
@@ -358,40 +368,42 @@ class CCAT_holo():
                                       must be given.
         '''
         # read the aperture field points coordinates
-        Rx=self.holo_conf['Rx0'][0]
+        Rx=self.holo_conf['Rx1'][0]
         file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
         with h5py.File(file,'r') as f:
-            self.aperture_xy=f['aperture'][:]
-        Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)
+            self.aperture_xy=f['aperture'][:][:]
+        Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1=DATA2TORCH(self.Panel_center_M2,self.Panel_center_M1,
                                                              self.m2_0,self.m1_0,
                                                              self.p_m2,self.q_m2,
                                                              self.p_m1,self.q_m1,DEVICE=Device)
-        Vars={'Rx0': None, 'Rx1': None, 'Rx2': None, 'Rx3': None, 'Rx4': None}
-        for i in range(5):
-            Rx=self.holo_conf['Rx'+str(i)][0]
+        Vars={'Rx1': None, 'Rx2': None, 'Rx3': None, 'Rx4': None, 'Rx5': None}
+        N=len(Vars)
+        for i in range(N):
+            Rx=self.holo_conf['Rx'+str(i+1)][0]
             file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
-            Vars['Rx'+str(i)]=DATA2TORCH(*Load_Mat(file))
+            Vars['Rx'+str(i+1)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
         if fitting_param=='panel adjusters':
             def FF(Adjusters,Para_A,Para_p):
-                R0=fitting_func(*Vars['Rx0'],
+                
+                R0=fitting_func(*Vars['Rx1'],
                                 Adjusters,
                                 List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                 Para_A[0:6],Para_p[0:5],Aperture)
-                R1=fitting_func(*Vars['Rx1'],
+                R1=fitting_func(*Vars['Rx2'],
                                 Adjusters,
                                 List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                 Para_A[6:6*2],Para_p[5:5*2],Aperture)
-                R2=fitting_func(*Vars['Rx2'],
+                R2=fitting_func(*Vars['Rx3'],
                                 Adjusters,
                                 List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                 Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
-                R3=fitting_func(*Vars['Rx3'],
+                R3=fitting_func(*Vars['Rx4'],
                                 Adjusters,
                                 List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                 Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
-                R4=fitting_func(*Vars['Rx4'],
+                R4=fitting_func(*Vars['Rx5'],
                                 Adjusters,
                                 List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                 Para_A[6*4:],Para_p[5*4:],Aperture)
@@ -400,41 +412,233 @@ class CCAT_holo():
         elif fitting_param=='zernike':
             self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=Device)
             self.Z_surf1=make_zernike(Z_order,m1.x/self.R1,(m1.y-0.0)/self.R1,dtype='torch',device=Device)
-            def FF(Z_coeff2,Z_coeff1,Para_A,Para_p):
-                R0=fitting_func_zernike(*Vars['Rx0'],
-                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+            def FF(Z_coeff,Para_A,Para_p):
+                R0=fitting_func_zernike(*Vars['Rx1'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
                                         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                         Para_A[0:6],Para_p[0:5],Aperture)
-                R1=fitting_func_zernike(*Vars['Rx1'],
-                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                R1=fitting_func_zernike(*Vars['Rx2'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
                                         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                         Para_A[6:6*2],Para_p[5:5*2],Aperture)
-                R2=fitting_func_zernike(*Vars['Rx2'],
-                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                R2=fitting_func_zernike(*Vars['Rx3'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
                                         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                         Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
-                R3=fitting_func_zernike(*Vars['Rx3'],
-                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                R3=fitting_func_zernike(*Vars['Rx4'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
                                         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                         Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
-                R4=fitting_func_zernike(*Vars['Rx4'],
-                                        Z_coeff2,Z_coeff1,self.Z_surf2,self.Z_surf1,
+                R4=fitting_func_zernike(*Vars['Rx5'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
                                         List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
                                         Para_A[6*4:],Para_p[5*4:],Aperture)
                 return T.cat((R0,R1,R2,R3,R4))
             self.FF=FF
         else:
             print('The forward function is not sucessfully created!!!!')
+    
+    def mk_FF_4maps(self,fitting_param='panel adjusters',Device=T.device('cpu'),Z_order=7):
+        '''Define forward function (FF) !
+           *** fitting_param ***  1. 'panel adjusters' the fitting parameters are adjuster movements.
+                                   2. 'zernike' fit the coefficients of a set of zernike polynomials
+                                      for large spatial scale surface errors.
+                                      'zernike' model is chosen, maximum zernike order 'Z_order' 
+                                      must be given.
+        '''
+        # read the aperture field points coordinates
+        Rx=self.holo_conf['Rx2'][0]
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        with h5py.File(file,'r') as f:
+            self.aperture_xy=f['aperture'][:][:]
+        Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
+        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1=DATA2TORCH(self.Panel_center_M2,self.Panel_center_M1,
+                                                             self.m2_0,self.m1_0,
+                                                             self.p_m2,self.q_m2,
+                                                             self.p_m1,self.q_m1,DEVICE=Device)
+        Vars={'Rx2': None, 'Rx3': None, 'Rx4': None, 'Rx5': None}
+        N=len(Vars)
+        for i in range(N):
+            Rx=self.holo_conf['Rx'+str(i+2)][0]
+            file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+            Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
+        if fitting_param=='panel adjusters':
+            def FF(Adjusters,Para_A,Para_p):
+                R1=fitting_func(*Vars['Rx2'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[0:6*1],Para_p[0:5*1],Aperture)
+                R2=fitting_func(*Vars['Rx3'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                R3=fitting_func(*Vars['Rx4'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                R4=fitting_func(*Vars['Rx5'],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[6*3:],Para_p[5*3:],Aperture)
+                return T.cat((R1,R2,R3,R4))
+            self.FF=FF
+        elif fitting_param=='zernike':
+            self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=Device)
+            self.Z_surf1=make_zernike(Z_order,m1.x/self.R1,(m1.y-0.0)/self.R1,dtype='torch',device=Device)
+            def FF(Z_coeff,Para_A,Para_p):
+                R1=fitting_func_zernike(*Vars['Rx2'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[0:6*1],Para_p[0:5*1],Aperture)
+                R2=fitting_func_zernike(*Vars['Rx3'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                R3=fitting_func_zernike(*Vars['Rx4'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                R4=fitting_func_zernike(*Vars['Rx5'],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[6*3:],Para_p[5*3:],Aperture)
+                return T.cat((R1,R2,R3,R4))
+            self.FF=FF
+        else:
+            print('The forward function is not sucessfully created!!!!')
 
-
-
-
-            
-
+    def mk_FF_1map(self,fitting_param='panel adjusters',Device=T.device('cpu'),Z_order=7,conf='Rx1'):
+        '''Define forward function (FF) for one-beam holography analysis!
+           *** fitting_param ***  1. 'panel adjusters' the fitting parameters are adjuster movements.
+                                   2. 'zernike' fit the coefficients of a set of zernike polynomials
+                                      for large spatial scale surface errors.
+                                      'zernike' model is chosen, maximum zernike order 'Z_order' 
+                                      must be given.
+        '''
+        # read the aperture field points coordinates
+        Rx=self.holo_conf[conf][0]
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        with h5py.File(file,'r') as f:
+            self.aperture_xy=f['aperture'][:][:]
+        Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
+        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1=DATA2TORCH(self.Panel_center_M2,self.Panel_center_M1,
+                                                             self.m2_0,self.m1_0,
+                                                             self.p_m2,self.q_m2,
+                                                             self.p_m1,self.q_m1,DEVICE=Device)
+        Vars={conf: None}
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        Vars[conf]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
+        if fitting_param=='panel adjusters':
+            def FF(Adjusters,Para_A,Para_p):
+                R0=fitting_func(*Vars[conf],
+                                Adjusters,
+                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                Para_A[0:6],Para_p[0:5],Aperture)
+                return R0
+            self.FF=FF
+        elif fitting_param=='zernike':
+            self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=Device)
+            self.Z_surf1=make_zernike(Z_order,m1.x/self.R1,(m1.y-0.0)/self.R1,dtype='torch',device=Device)
+            def FF(Z_coeff,Para_A,Para_p):
+                R0=fitting_func_zernike(*Vars[conf],
+                                        Z_coeff[0,:],Z_coeff[1,:],self.Z_surf2,self.Z_surf1,
+                                        List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                        Para_A[0:6],Para_p[0:5],Aperture)
+                return R0
+            self.FF=FF
+        else:
+            print('The forward function is not sucessfully created!!!!')
+
+    '''
+    methods for holographic analysis
+    '''
+    
+    def fit_LP(self,Meas_maps,Device=T.device('cpu'),Init=np.zeros((5*(69+77))),Map_N=5):
+        '''
+        fit the large-scale parameters which describes errors 
+        '''
+        #
+        Surf_coeff=T.tensor(Init).to(Device)
+        test=correctphase2(Meas_maps,DEVICE=Device)
+        def lossfuc(parameters):
+            '''Change the input parameters into 'tensor type' '''
+            Params=T.tensor(parameters,requires_grad=True).to(Device)
+            paraA=Params[0:6*Map_N]
+            paraP=Params[6*Map_N:]
+
+            # Beam Calculation
+            Data=self.FF(Surf_coeff,paraA,paraP)
+            Data=correctphase2(Data,DEVICE=Device)
+            # residual
+            r=((Data-test)**2).sum()
+            r.backward()
+            print(r.item())
+
+            return r.data.cpu().numpy(),Params.grad.data.cpu().numpy()
         
+        fit_coeff=np.append(np.array([1.0,0,0,0,0,0]*Map_N),np.array([0,0,0,0,0]*Map_N))
+        start=time.perf_counter()
+        self.result_LP=scipy.optimize.minimize(lossfuc,fit_coeff,method='BFGS',jac=True,tol=1e-5)
+        elapsed=(time.perf_counter()-start)
+        print('Cost time:', elapsed)
+
+    def fit_surface(self,Meas_maps,constraint=[1,1,1,1,1,1],
+                    Device=T.device('cpu'),
+                    Init_LP=np.append(np.array([1,0,0,0,0,0]*5),np.array([0,0,0,0,0]*5)),
+                    Map_N=5):
+        ''' fit the surface profiles of the two mirrors'''
+        ''' Init_LP is initial input parameters for the large-scale errors in aperture plane.
+            Here we suggest to use the values from the first fit_LP fitting.
+        '''
+        Lambda_00=constraint[0]
+        Lambda_10=constraint[1]
+        Lambda_01=constraint[2]
+        Lambda_20=constraint[3]
+        Lambda_02=constraint[4]
+        Lambda0=constraint[5]
+        x2,y2,x1,y1=DATA2TORCH(self.S2_x,self.S2_y,self.S1_x,self.S1_y,DEVICE=Device)
+        test=correctphase2(Meas_maps,DEVICE=Device)
+        def lossfuc(parameters):
+            '''Change the input parameters into 'tensor type' '''
+            Params=T.tensor(parameters,requires_grad=True)
+            parameters=Params.to(Device)
+            Surf_coeff=parameters[0:-(6+5)*Map_N]
+            paraA=parameters[-(6+5)*Map_N:-5*Map_N]
+            paraP=parameters[-5*Map_N:]
+
+            Data=self.FF(Surf_coeff,paraA,paraP)
+            Data=correctphase2(Data,DEVICE=Device)
+
+            r0=((Data-test)**2).sum()
+            # consider the lagrange factors
+            S2=Surf_coeff[0:5*69]
+            S1=Surf_coeff[5*69:]   
+            Z_00=T.abs((S1).sum())+T.abs((S2).sum()) # compress piston error in large scale;
+            Z_10=T.abs((x2*S2).sum())+T.abs((x1*S1).sum()) # compress slope error in x
+            Z_01=T.abs((y2*S2).sum())+T.abs((y1*S1).sum())# slope error in y
+            Z_20=T.abs((S2*x2**2).sum())+T.abs((S1*(x1**2)).sum()) #  curvature error;
+            Z_02=T.abs((S2*y2**2).sum())+T.abs((S1*(y1**2)).sum()) 
+            Z=(S2**2).mean()+(S1**2).mean()
+            r=r0+Lambda_00*Z_00+Lambda_10*Z_10+Lambda_01*Z_01+Lambda_20*Z_20+Lambda_02*Z_02+Lambda0*Z
+            print(Z_00.item(),Z_10.item(),Z_01.item(),Z_20.item(),Z_02.item())
+            print(Z.item(),r0.item())
+            r=r.sum()
+            r.backward()
+            print(r.item())
+
+            return r.data.cpu().numpy(),Params.grad.data.cpu().numpy()
         
+        fit_coeff=np.append(np.zeros(5*(69+77)),Init_LP).ravel()
+
+        start=time.perf_counter()
+        self.result=scipy.optimize.minimize(lossfuc,fit_coeff,method="BFGS",jac=True,tol=1e-4)
+        elapsed=(time.perf_counter()-start)
+        print('Cost time:', elapsed)
+
+
+
 
 
 
@@ -467,7 +671,7 @@ class CCAT_holo():
             Rx=self.holo_conf[conf[0]][0]
             file1=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
             with h5py.File(file1,'r') as f:
-                self.aperture_xy=f['aperture'][:]
+                self.aperture_xy=f['aperture'][:][:]
             
             List_2,List_1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1=DATA2CUDA(List_m2,List_m1,m2,m1,aperture,p_m2,q_m2,p_m1,q_m1,DEVICE=DEVICE)
 

@@ -98,13 +98,14 @@ def error_ff(adjuster,List,p,q,m):
 '''
 3.  DATA pre-processing corrected the beam pattern by the center point in the map;
 '''
-def correctphase(data,DEVICE=DEVICE0): 
+def correctphase2(data,DEVICE=DEVICE0): 
     N_angle=int(np.sqrt(data.size()[1]));
     data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE);
     for i in range(0,data.size()[0]-1,2):
         
         Phase0=T.atan2(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)],data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)])
-        Amp0=T.sqrt(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2+data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2)
+        #Amp0=T.sqrt(data[i+1,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2+data[i,...].view(N_angle,-1)[int(N_angle/2),int(N_angle/2)]**2)
+        Amp0=T.sqrt((data[i,...]**2+data[i+1,...]**2).sum());
         
         c=1/Amp0*T.cos(-Phase0);
         s=1/Amp0*T.sin(-Phase0);
@@ -115,7 +116,7 @@ def correctphase(data,DEVICE=DEVICE0):
     return data1;
 
 
-def correctphase2(data, DEVICE=DEVICE0): 
+def correctphase(data, DEVICE=DEVICE0): 
     N_angle=int(np.sqrt(data.size()[1]));
     data1=T.zeros(data.size(),dtype=T.float64).to(DEVICE);
     for i in range(0,data.size()[0]-1,2):
