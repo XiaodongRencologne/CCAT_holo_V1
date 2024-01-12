@@ -121,6 +121,8 @@ class CCAT_holo():
         
         self._coords(Rx=[0,0,0])
 
+        self.FF=None
+
     def _coords(self,Rx=[0,0,0]):
         '''coordinates systems'''
         '''
@@ -370,6 +372,10 @@ class CCAT_holo():
                                       'zernike' model is chosen, maximum zernike order 'Z_order' 
                                       must be given.
         '''
+        if T.cuda.is_available():
+            T.cuda.empty_cache()
+        if self.FF!=None:
+            del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf['Rx1'][0]
         file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
@@ -388,17 +394,19 @@ class CCAT_holo():
                 file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
                 Vars['Rx'+str(i+1)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
             flip_order2=[]
+            N_m2=self.Panel_center_M2.shape[0]
             for i in range(self.Panel_center_M2.shape[0]):
-                N1=np.where(self.Panel_center_M2[:,0]==-self.Panel_center_M2[:,0])[0]
-                N2=np.where(self.Panel_center_M2[:,1]==self.Panel_center_M2[:,1])[0]
+                N1=np.where(self.Panel_center_M2[:,0]==-self.Panel_center_M2[i,0])[0]
+                N2=np.where(self.Panel_center_M2[:,1]==self.Panel_center_M2[i,1])[0]
                 NN=np.intersect1d(N1,N2)
                 flip_order2.append(NN.tolist())
             flip_order1=[]
+            N_m1=self.Panel_center_M1.shape[0]
             for i in range(self.Panel_center_M1.shape[0]):
-                N1=np.where(self.Panel_center_M1[:,0]==-self.Panel_center_M1[:,0])[0]
-                N2=np.where(self.Panel_center_M1[:,1]==self.Panel_center_M1[:,1])[0]
+                N1=np.where(self.Panel_center_M1[:,0]==-self.Panel_center_M1[i,0])[0]
+                N2=np.where(self.Panel_center_M1[:,1]==self.Panel_center_M1[i,1])[0]
                 NN=np.intersect1d(N1,N2)
-                flip_order2.append(NN.tolist())
+                flip_order1.append(NN.tolist())
         else:
             for i in range(N):
                 Rx=self.holo_conf['Rx'+str(i+1)][0]
@@ -407,7 +415,31 @@ class CCAT_holo():
             
         if fitting_param=='panel adjusters':
             if Memory_reduc:
-                pass
+                def FF(Adjusters,Para_A,Para_p):
+                    AD2=Adjusters[0:5*N_m2].reshape(5,-1)[:,flip_order2].view(-1)
+                    AD1=Adjusters[0:5*N_m1].reshape(5,-1)[:,flip_order1].view(-1)
+                    Adjustersp=T.cat((AD2,AD1))
+                    R0=fitting_func(*Vars['Rx1'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[0:6],Para_p[0:5],Aperture)
+                    R1=fitting_func(*Vars['Rx2'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                    R2=fitting_func(*Vars['Rx3'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                    R3=fitting_func(*Vars['Rx2'],
+                                    Adjustersp,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*3:6*4],Para_p[5*3:5*4],Aperture)
+                    R4=fitting_func(*Vars['Rx3'],
+                                    Adjustersp,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*4:],Para_p[5*4:],Aperture)
+                    return T.cat((R0,R1,R2,R3,R4))
             else:
                 def FF(Adjusters,Para_A,Para_p):
                     
@@ -465,7 +497,10 @@ class CCAT_holo():
         else:
             print('The forward function is not sucessfully created!!!!')
     
-    def mk_FF_4maps(self,fitting_param='panel adjusters',Device=T.device('cpu'),Z_order=7):
+    def mk_FF_4maps(self,fitting_param='panel adjusters',
+                         Device=T.device('cpu'),
+                         Z_order=7,
+                         Memory_reduc=False):
         '''Define forward function (FF) !
            *** fitting_param ***  1. 'panel adjusters' the fitting parameters are adjuster movements.
                                    2. 'zernike' fit the coefficients of a set of zernike polynomials
@@ -473,6 +508,10 @@ class CCAT_holo():
                                       'zernike' model is chosen, maximum zernike order 'Z_order' 
                                       must be given.
         '''
+        if T.cuda.is_available():
+            T.cuda.empty_cache()
+        if self.FF!=None:
+            del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf['Rx2'][0]
         file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
@@ -485,30 +524,73 @@ class CCAT_holo():
                                                              self.p_m1,self.q_m1,DEVICE=Device)
         Vars={'Rx2': None, 'Rx3': None, 'Rx4': None, 'Rx5': None}
         N=len(Vars)
-        for i in range(N):
-            Rx=self.holo_conf['Rx'+str(i+2)][0]
-            file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
-            Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
+        if Memory_reduc:
+            for i in range(2):
+                Rx=self.holo_conf['Rx'+str(i+2)][0]
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
+            flip_order2=[]
+            N_m2=self.Panel_center_M2.shape[0]
+            for i in range(self.Panel_center_M2.shape[0]):
+                N1=np.where(self.Panel_center_M2[:,0]==-self.Panel_center_M2[i,0])[0]
+                N2=np.where(self.Panel_center_M2[:,1]==self.Panel_center_M2[i,1])[0]
+                NN=np.intersect1d(N1,N2)
+                flip_order2.append(NN.tolist())
+            flip_order1=[]
+            N_m1=self.Panel_center_M1.shape[0]
+            for i in range(self.Panel_center_M1.shape[0]):
+                N1=np.where(self.Panel_center_M1[:,0]==-self.Panel_center_M1[i,0])[0]
+                N2=np.where(self.Panel_center_M1[:,1]==self.Panel_center_M1[i,1])[0]
+                NN=np.intersect1d(N1,N2)
+                flip_order1.append(NN.tolist())
+        else:
+            for i in range(N):
+                Rx=self.holo_conf['Rx'+str(i+2)][0]
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
         if fitting_param=='panel adjusters':
-            def FF(Adjusters,Para_A,Para_p):
-                R1=fitting_func(*Vars['Rx2'],
-                                Adjusters,
-                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
-                                Para_A[0:6*1],Para_p[0:5*1],Aperture)
-                R2=fitting_func(*Vars['Rx3'],
-                                Adjusters,
-                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
-                                Para_A[6:6*2],Para_p[5:5*2],Aperture)
-                R3=fitting_func(*Vars['Rx4'],
-                                Adjusters,
-                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
-                                Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
-                R4=fitting_func(*Vars['Rx5'],
-                                Adjusters,
-                                List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
-                                Para_A[6*3:],Para_p[5*3:],Aperture)
-                return T.cat((R1,R2,R3,R4))
+            if Memory_reduc:
+                def FF(Adjusters,Para_A,Para_p):
+                    AD2=Adjusters[0:5*N_m2].reshape(5,-1)[:,flip_order2].view(-1)
+                    AD1=Adjusters[0:5*N_m1].reshape(5,-1)[:,flip_order1].view(-1)
+                    Adjustersp=T.cat((AD2,AD1)).reshape(-1)
+                    R1=fitting_func(*Vars['Rx2'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[0:6*1],Para_p[0:5*1],Aperture)
+                    R2=fitting_func(*Vars['Rx3'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                    R3=fitting_func(*Vars['Rx2'],
+                                    Adjustersp,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                    R4=fitting_func(*Vars['Rx3'],
+                                    Adjustersp,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*3:],Para_p[5*3:],Aperture)
+                    return T.cat((R1,R2,R3,R4))
+            else:
+                def FF(Adjusters,Para_A,Para_p):
+                    R1=fitting_func(*Vars['Rx2'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[0:6*1],Para_p[0:5*1],Aperture)
+                    R2=fitting_func(*Vars['Rx3'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6:6*2],Para_p[5:5*2],Aperture)
+                    R3=fitting_func(*Vars['Rx4'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*2:6*3],Para_p[5*2:5*3],Aperture)
+                    R4=fitting_func(*Vars['Rx5'],
+                                    Adjusters,
+                                    List_2,List_1,m2,m1,p_m2,q_m2,p_m1,q_m1,self.k,
+                                    Para_A[6*3:],Para_p[5*3:],Aperture)
+                    return T.cat((R1,R2,R3,R4))
             self.FF=FF
         elif fitting_param=='zernike':
             self.Z_surf2=make_zernike(Z_order,m2.x/self.R2,(m2.y+0.0)/self.R2,dtype='torch',device=Device)
@@ -535,7 +617,10 @@ class CCAT_holo():
         else:
             print('The forward function is not sucessfully created!!!!')
 
-    def mk_FF_1map(self,fitting_param='panel adjusters',Device=T.device('cpu'),Z_order=7,conf='Rx1'):
+    def mk_FF_1map(self,fitting_param='panel adjusters',
+                        Device=T.device('cpu'),
+                        Z_order=7,
+                        conf='Rx1'):
         '''Define forward function (FF) for one-beam holography analysis!
            *** fitting_param ***  1. 'panel adjusters' the fitting parameters are adjuster movements.
                                    2. 'zernike' fit the coefficients of a set of zernike polynomials
@@ -543,6 +628,10 @@ class CCAT_holo():
                                       'zernike' model is chosen, maximum zernike order 'Z_order' 
                                       must be given.
         '''
+        if T.cuda.is_available():
+            T.cuda.empty_cache()
+        if self.FF!=None:
+            del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf[conf][0]
         file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
