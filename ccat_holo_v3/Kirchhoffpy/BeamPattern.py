@@ -1,20 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
 
-
-
-#!/usr/bin/env python
-
-# In[1]:
 
 
 import numpy as np;
 import matplotlib.pyplot as plt;
 
 
-# In[22]:
 
 
 

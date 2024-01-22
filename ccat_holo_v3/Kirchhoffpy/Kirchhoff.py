@@ -1,17 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[20]:
-
-
 import numpy as np;
 import torch as T;
-import copy;
 import time;
-
-
-
-# In[21]:
 
 
 '''
