@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
-
 
 '''
 This package provides N input beams, and each beam function can offer scalar and vector modes.
@@ -16,8 +14,6 @@ from .coordinate_operations import Transform_local2global as local2global;
 from .coordinate_operations import Transform_global2local as global2local;
 
 
-
-# In[5]:
 
 
 '''
