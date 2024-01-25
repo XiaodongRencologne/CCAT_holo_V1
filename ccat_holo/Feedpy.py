@@ -9,9 +9,9 @@ This package provides N input beams, and each beam function can offer scalar and
 '''
 
 import numpy as np;
-from .coordinate_operations import cartesian_to_spherical as cart2spher;
-from .coordinate_operations import Transform_local2global as local2global;
-from .coordinate_operations import Transform_global2local as global2local;
+from coordinate_operations import cartesian_to_spherical as cart2spher;
+from coordinate_operations import Transform_local2global as local2global;
+from coordinate_operations import Transform_global2local as global2local;
 
 
 

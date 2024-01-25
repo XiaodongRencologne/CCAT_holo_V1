@@ -5,28 +5,28 @@ import time
 import h5py
 import matplotlib.pyplot as plt
 
-from Kirchhoffpy.mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
+from mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
 # 'profile' with 2d poynomial coefficients produces surface function f(x,y).
 # 'squarepanel' is the rim of the panels of mirrors and sampling range. 
 # 'deformation' is the panel surface changes caused by errors of panel adjusters.
 # 'ImagPlane' is used to define the sampling range of IF field plane.
-from Kirchhoffpy.coordinate_operations import Coord
-from Kirchhoffpy.coordinate_operations import Transform_local2global as local2global
+from coordinate_operations import Coord
+from coordinate_operations import Transform_local2global as local2global
 # geometry models are smampled by discrete points. Coordinates of the points 
 # are expressed by Coord.x, Coord.y, Coord.z
 # other functions are known from theirs names used for transformations between coordinate
 # systems by giving their origin point displacement and rotation angles.
-from Kirchhoffpy.Kirchhoff import Complex, PO_scalar
+from Kirchhoff import Complex, PO_scalar
 # PO_scalar is the field solver. Compex is used to express complex fields on mirror surfaces
 # and desired field region.
-from Kirchhoffpy.Feedpy import Gaussibeam
+from Feedpy import Gaussibeam
 # Input field from a Gaussian feed horn.
 
-from Kirchhoffpy.zernike_torch import mkCFn as make_zernike;
-from Kirchhoffpy.zernike_torch import N as poly_N;
+from zernike_torch import mkCFn as make_zernike;
+from zernike_torch import N as poly_N;
 
-from Kirchhoffpy.inference import DATA2TORCH, correctphase2
-from Kirchhoffpy.inference import fitting_func, fitting_func_zernike
+from inference import DATA2TORCH, correctphase2
+from inference import fitting_func, fitting_func_zernike
 
 
 # surface errors expressed by zernike polynomials.

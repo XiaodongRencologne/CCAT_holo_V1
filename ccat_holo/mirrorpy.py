@@ -13,10 +13,10 @@ Package used to build mirror model based on 'uniform sampling' and 'Gaussian qua
 import numpy as np;
 import scipy
 import torch as T;
-from .coordinate_operations import Coord;
+from coordinate_operations import Coord;
 
-from .coordinate_operations import Transform_local2global as local2global;
-from .coordinate_operations import Transform_global2local as global2local;
+from coordinate_operations import Transform_local2global as local2global;
+from coordinate_operations import Transform_global2local as global2local;
 # In[ ]:
 
 
