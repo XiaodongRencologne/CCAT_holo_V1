@@ -142,8 +142,10 @@ class CCAT_holo():
         Theta_0=data[0]
         Ls=data[1]
         Lm=data[2]
-        L_fimag=data[3]
-        F=data[4]
+        F=data[3]
+        L_fimag=1/(1/Ls-1/F)
+        
+        
 
         self.angle_m2=[-(np.pi/2+Theta_0)/2,0,0] #  1. m2 and global co-ordinates
         self.D_m2=[0,-Lm*np.sin(Theta_0),0]
