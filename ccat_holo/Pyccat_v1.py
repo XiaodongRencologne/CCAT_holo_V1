@@ -105,7 +105,7 @@ class CCAT_holo():
         
         # Intermedia plane
         self.fimag_N=parameters[14:16]
-        self.fimag_size=parameters[16:18]
+        self.fimag_size=parameters[16:]
         self.fimag,self.fimag_n,self.fimag_dA=ImagPlane(self.fimag_size[0],self.fimag_size[1],
                                                         self.fimag_N[0],self.fimag_N[1]  
                                                         )

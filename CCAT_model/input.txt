@@ -16,5 +16,4 @@ fimag_Nx,121
 fimag_Ny,121
 fimag_sizex,600
 fimag_sizey,600
-distance, 300
 
