@@ -9,7 +9,7 @@ import h5py
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import pyvista as pv
-pv.set_jupyter_backend('trame')
+pv.set_jupyter_backend('static')#('trame')
 
 
 from mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
