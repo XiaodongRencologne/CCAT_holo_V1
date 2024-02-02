@@ -1,9 +1,15 @@
+import os
+
 import numpy as np
 import scipy.optimize
 import torch as T
 import time
 import h5py
+
+from matplotlib import cm
 import matplotlib.pyplot as plt
+import pyvista as pv
+
 
 from mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
 # 'profile' with 2d poynomial coefficients produces surface function f(x,y).
@@ -32,11 +38,11 @@ from inference import fitting_func, fitting_func_zernike
 # surface errors expressed by zernike polynomials.
 c=299792458*1000
 
-holo_setup={'Rx1':([0,0,600],'beam/on-axis.txt'),
-            'Rx2':([400,400,600],'beam/400_400_600.txt'),
-            'Rx3':([400,-400,600],'beam/400_-400_600.txt'),
-            'Rx4':([-400,400,600],'beam/-400_400_600.txt'),
-            'Rx5':([-400,-400,600],'beam/-400_-400_600.txt')
+holo_setup={'Rx1':([0,0,600],'scan/on-axis.txt'),
+            'Rx2':([400,400,600],'scan/400_400_600.txt'),
+            'Rx3':([400,-400,600],'scan/400_-400_600.txt'),
+            'Rx4':([-400,400,600],'scan/-400_400_600.txt'),
+            'Rx5':([-400,-400,600],'scan/-400_-400_600.txt')
             }
 
 def Load_Mat(filename):
@@ -57,10 +63,16 @@ def Load_Mat(filename):
     return M21,M3,cosm2_i,cosm2_r,cosm1_i,cosm1_r,F_m2
 class CCAT_holo():
     def __init__(self,Model_folder,output_folder,holo_conf=holo_setup,input_Rx_beam=Gaussibeam):
+        if os.path.isdir(output_folder):
+            pass
+        else:
+            os.makedirs(output_folder)
         self.Model_folder=Model_folder
         self.output_folder=output_folder
         self.holo_conf=holo_conf
         self.output_filename=None
+        self.View_3D=None
+        self.widget=pv.Plotter()
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
@@ -122,6 +134,7 @@ class CCAT_holo():
         self._coords(Rx=[0,0,0])
 
         self.FF=None
+        print('FYST telescope model has been created!!')
 
     def _coords(self,Rx=[0,0,0]):
         '''coordinates systems'''
@@ -178,7 +191,90 @@ class CCAT_holo():
         self.angle_f=[np.pi/2,0,0];    
         self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
 
-    def _beam(self,scan_file,Rx=[0,0,0],Matrix=False,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0):
+    def view(self,):
+        m2,m2_n,m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
+                                                    self.M2_size[0],self.M2_size[1],
+                                                    2,2,
+                                                    self.surface_m2
+                                                    )
+        m1,m1_n,m1_dA=squarepanel(self.Panel_center_M1[...,0],self.Panel_center_M1[...,1],
+                                                    self.M1_size[0],self.M1_size[1],
+                                                    2,2,
+                                                    self.surface_m1
+                                                    )
+        del(m2_n,m2_dA,m1_n,m1_dA)
+        m2=local2global(self.angle_m2,self.D_m2,m2)
+        m1=local2global(self.angle_m1,self.D_m1,m1)
+        points2 = np.c_[m2.x.reshape(-1), m2.y.reshape(-1), m2.z.reshape(-1)]
+        points1 = np.c_[m1.x.reshape(-1), m1.y.reshape(-1), m1.z.reshape(-1)]
+        del(m2,m1)
+        self.widget.clear()
+        cloud2 = pv.PolyData(points2)
+        cloud1 = pv.PolyData(points1)
+        mesh2=self.widget.add_mesh(cloud2.delaunay_2d(),show_edges=True)
+        mesh1=self.widget.add_mesh(cloud1.delaunay_2d(),show_edges=True)
+        self.widget.show()
+    def view2(self,):
+        self.widget.clear()
+        m2=Coord()
+        m1=Coord()
+        N_m2=self.Panel_center_M2[...,0].size
+        N_m1=self.Panel_center_M1[...,0].size
+        a2=self.M2_size[0]
+        b2=self.M2_size[1]
+        a1=self.M1_size[0]
+        b1=self.M1_size[1]
+        m2.x=self.Panel_center_M2[:,0].repeat(4).reshape(-1,4)
+        m2.y=self.Panel_center_M2[:,1].repeat(4).reshape(-1,4)
+        ###########
+        m2.x[:,0]=m2.x[:,0]-a2/2; m2.y[:,0]=m2.y[:,0]-b2/2
+        m2.x[:,1]=m2.x[:,1]-a2/2; m2.y[:,1]=m2.y[:,1]+b2/2
+        m2.x[:,2]=m2.x[:,2]+a2/2; m2.y[:,2]=m2.y[:,2]+b2/2
+        m2.x[:,3]=m2.x[:,3]+a2/2; m2.y[:,3]=m2.y[:,3]-b2/2
+        m2.x=m2.x.ravel()
+        m2.y=m2.y.ravel()
+        m2.z,V_n=self.surface_m2(m2.x,m2.y)
+        del(V_n)
+
+
+        m1.x=self.Panel_center_M1[...,0].repeat(4).reshape(-1,4)
+        m1.y=self.Panel_center_M1[...,1].repeat(4).reshape(-1,4)
+        m1.x[:,0]=m1.x[:,0]-a1/2; m1.y[:,0]=m1.y[:,0]-b1/2
+        m1.x[:,1]=m1.x[:,1]-a1/2; m1.y[:,1]=m1.y[:,1]+b1/2
+        m1.x[:,2]=m1.x[:,2]+a1/2; m1.y[:,2]=m1.y[:,2]+b1/2
+        m1.x[:,3]=m1.x[:,3]+a1/2; m1.y[:,3]=m1.y[:,3]-b1/2
+        m1.x=m1.x.ravel()
+        m1.y=m1.y.ravel()
+        m1.z,V_n=self.surface_m1(m1.y,m1.y)
+        del(V_n)
+
+
+        m2=local2global(self.angle_m2,self.D_m2,m2)
+        m1=local2global(self.angle_m1,self.D_m1,m1)
+
+        points2 = np.c_[m2.x.reshape(-1), m2.y.reshape(-1), m2.z.reshape(-1)]
+        points1 = np.c_[m1.x.reshape(-1), m1.y.reshape(-1), m1.z.reshape(-1)]
+        del(m2,m1)
+        faces2=np.ones(N_m2).astype(int)*4
+        factor=np.linspace(0,4*N_m2-1,4*N_m2).astype(int).reshape(-1,4)
+        faces2=np.c_[faces2,factor].ravel()
+
+        faces1=np.ones(N_m1).astype(int)*4
+        factor=np.linspace(0,4*N_m1-1,4*N_m1).astype(int).reshape(-1,4)
+        faces1=np.c_[faces1,factor]
+
+        panel1 = pv.PolyData(points1,faces1)
+        panel2 = pv.PolyData(points2,faces2)
+
+        self.widget.add_mesh(panel1,show_edges=True)
+        self.widget.add_mesh(panel2,show_edges=True)
+        self.widget.show()
+
+    def view_Rx(self,Rx=['Rx1','Rx1','Rx1','Rx1','Rx1',]):
+        pass
+
+
+    def _beam(self,scan_file,Rx=[0,0,0],Matrix=False,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,file_name='data'):
         '''**scan_file** is scan trajectary data;
            **   Rx    ** position of receiver in focal plane or receiver plane
            ** S2_init ** Offset of panel adjusters on M2
@@ -236,7 +332,7 @@ class CCAT_holo():
         # 3. calculate field on IF plane
         fimag=local2global(self.angle_fimag,self.D_fimag,self.fimag)
         fimag_n=local2global(self.angle_fimag,[0,0,0],self.fimag_n)
-        Matrix1,Field_fimag,cosm2_r=PO_scalar(m2,m2_n,
+        Matrix1,self.Field_fimag,cosm2_r=PO_scalar(m2,m2_n,
                                               self.m2_dA,
                                               fimag,cosm2_i,
                                               Field_m2,-self.k,
@@ -261,7 +357,7 @@ class CCAT_holo():
 
         Matrix2,Field_m1,cosm=PO_scalar(fimag,fimag_n,self.fimag_dA,
                                         m1,np.array([1]),
-                                        Field_fimag,
+                                        self.Field_fimag,
                                         self.k,
                                         Keepmatrix=Matrix
                                         )
@@ -280,7 +376,7 @@ class CCAT_holo():
         
         #5. calculate the field in the source range;
         source=local2global(self.angle_s,self.D_s,scan_pattern)
-        Matrix3,Field_s,cosm1_r=PO_scalar(m1,m1_n,self.m1_dA,
+        Matrix3,self.Field_s,cosm1_r=PO_scalar(m1,m1_n,self.m1_dA,
                                           source,cosm1_i,
                                           Field_m1,
                                           self.k,
@@ -291,7 +387,7 @@ class CCAT_holo():
         print('time used:',elapsed)
         # Save the computation data into h5py file, and the intermediate Matrixs that wil
         # be used for accelerating the forward beam calculations.
-        self.output_filename=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        self.output_filename=self.output_folder+'/'+file_name+'_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
         with h5py.File(self.output_filename,'w') as f:
               #f.create_dataset('conf',data=(Rx,scan_file))
               f.create_dataset('freq (GHz)',data=self.freq)
@@ -308,10 +404,10 @@ class CCAT_holo():
               f.create_dataset('F_m2_imag',data=Field_m2.imag)
               f.create_dataset('F_m1_real',data=Field_m1.real)
               f.create_dataset('F_m1_imag',data=Field_m1.imag)
-              f.create_dataset('F_if_real',data=Field_fimag.real)
-              f.create_dataset('F_if_imag',data=Field_fimag.imag)
-              f.create_dataset('F_beam_real',data=Field_s.real)
-              f.create_dataset('F_beam_imag',data=Field_s.imag)
+              f.create_dataset('F_if_real',data=self.Field_fimag.real)
+              f.create_dataset('F_if_imag',data=self.Field_fimag.imag)
+              f.create_dataset('F_beam_real',data=self.Field_s.real)
+              f.create_dataset('F_beam_imag',data=self.Field_s.imag)
               f.create_dataset('aperture',data=self.aperture_xy)
               f.create_dataset('scan_pattern',data=np.concatenate((source.x,
                                                                    source.y,source.z)).reshape(3,-1))
@@ -344,8 +440,8 @@ class CCAT_holo():
             p1=axs[0].plot(x[50,:],20*np.log10(np.abs(beam[50,:])))
             p2=axs[1].plot(x[50,:],np.angle(beam[50,:])*180/np.pi,'*-')
             plt.show()
-            print(beam.real)
-            print(beam.imag)
+            #print(beam.real)
+            #print(beam.imag)
 
     def build_holo(self,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77))):
         '''Set the holographic design and make the first beam calculations'''

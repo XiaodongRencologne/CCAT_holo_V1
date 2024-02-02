@@ -4,9 +4,9 @@ CCAT_holo is a python package which is designed to analyze the holographic measu
 
 A new holographic metrology, **'Multi-map'** Holography method, has been developed to measure and discriminate the surface errors between the two reflectors by taking 5 complex beam maps of the telescope. 'CCAT_holo' software is developed to convert the measured beam maps into the 'Two' surface error maps of the reflectors.
 
+### This package just work with python3 with verion >=3.7
 
-
-
-
-
+## Installation
+You need to install the packages in the requirements file using
+'pip install -r requirements'
 
