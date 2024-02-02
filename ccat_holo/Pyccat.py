@@ -73,7 +73,8 @@ class CCAT_holo():
         self.holo_conf=holo_conf
         self.output_filename=None
         self.View_3D=None
-        self.widget=pv.Plotter(notebook=False)
+        self.Rx_3D=dict.fromkeys(holo_conf.keys(),[])
+        self.widget=pv.Plotter(notebook=True)
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
@@ -273,11 +274,22 @@ class CCAT_holo():
 
         self.widget.add_mesh(panel1,show_edges=True)
         self.widget.add_mesh(panel2,show_edges=True)
-        
+        self.view_Rx()
         self.widget.show()
 
-    def view_Rx(self,Rx=['Rx1','Rx1','Rx1','Rx1','Rx1',]):
-        pass
+    def view_Rx(self,Rx=[]):
+        for key in self.holo_conf:
+            self._coords(self.holo_conf[key][0])
+            cone=pv.Cone(center=tuple(self.D_f),
+                        direction=(0,1,0),
+                        height=300*self.Lambda,
+                        radius=100*self.Lambda)
+            if self.Rx_3D[key]!=[]:
+                self.widget.remove_actor(self.Rx_3D[key])
+            if key in Rx:
+                self.Rx_3D[key]=self.widget.add_mesh(cone,color='blue')
+            else:
+                self.Rx_3D[key]=self.widget.add_mesh(cone)
 
 
     def _beam(self,scan_file,Rx=[0,0,0],Matrix=False,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,file_name='data'):

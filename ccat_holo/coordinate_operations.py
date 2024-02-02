@@ -41,8 +41,6 @@ def Transform_local2global (angle,displacement,local):
     L=np.append([local.x,local.y],[local.z],axis=0)
     mat=transforms3d.euler.euler2mat(-angle[0],-angle[1],-angle[2]) 
     mat=np.transpose(mat)
-    print(mat)
-    print(L.shape)
     G=np.matmul(mat,L);  
     G=G+displacement.reshape(-1,1)
     
