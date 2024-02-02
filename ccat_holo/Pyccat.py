@@ -9,6 +9,7 @@ import h5py
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import pyvista as pv
+pv.set_jupyter_backend('trame')
 
 
 from mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
@@ -72,7 +73,7 @@ class CCAT_holo():
         self.holo_conf=holo_conf
         self.output_filename=None
         self.View_3D=None
-        self.widget=pv.Plotter()
+        self.widget=pv.Plotter(notebook=False)
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
@@ -243,31 +244,36 @@ class CCAT_holo():
         m1.x[:,1]=m1.x[:,1]-a1/2; m1.y[:,1]=m1.y[:,1]+b1/2
         m1.x[:,2]=m1.x[:,2]+a1/2; m1.y[:,2]=m1.y[:,2]+b1/2
         m1.x[:,3]=m1.x[:,3]+a1/2; m1.y[:,3]=m1.y[:,3]-b1/2
+
         m1.x=m1.x.ravel()
         m1.y=m1.y.ravel()
+
         m1.z,V_n=self.surface_m1(m1.y,m1.y)
-        del(V_n)
 
-
+        print(self.angle_m2,self.D_m2)
         m2=local2global(self.angle_m2,self.D_m2,m2)
         m1=local2global(self.angle_m1,self.D_m1,m1)
 
         points2 = np.c_[m2.x.reshape(-1), m2.y.reshape(-1), m2.z.reshape(-1)]
         points1 = np.c_[m1.x.reshape(-1), m1.y.reshape(-1), m1.z.reshape(-1)]
         del(m2,m1)
+
         faces2=np.ones(N_m2).astype(int)*4
         factor=np.linspace(0,4*N_m2-1,4*N_m2).astype(int).reshape(-1,4)
         faces2=np.c_[faces2,factor].ravel()
+
 
         faces1=np.ones(N_m1).astype(int)*4
         factor=np.linspace(0,4*N_m1-1,4*N_m1).astype(int).reshape(-1,4)
         faces1=np.c_[faces1,factor]
 
+        
         panel1 = pv.PolyData(points1,faces1)
         panel2 = pv.PolyData(points2,faces2)
 
         self.widget.add_mesh(panel1,show_edges=True)
         self.widget.add_mesh(panel2,show_edges=True)
+        
         self.widget.show()
 
     def view_Rx(self,Rx=['Rx1','Rx1','Rx1','Rx1','Rx1',]):

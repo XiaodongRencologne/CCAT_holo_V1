@@ -37,41 +37,45 @@ class Coord:
 coordinates transformation, from local coordinates to global coordinates;
 '''        
 def Transform_local2global (angle,displacement,local):
-    displacement=np.array(displacement);
+    displacement=np.array(displacement)
     L=np.append([local.x,local.y],[local.z],axis=0)
-    mat=transforms3d.euler.euler2mat(-angle[0],-angle[1],-angle[2]);  
-    mat=np.transpose(mat);
-    G=np.matmul(mat,L);   
-    G=G+displacement.reshape(-1,1);
-    g=Coord();
-    g.x=G[0,...];
-    g.y=G[1,...];
-    g.z=G[2,...];
-    g.N=local.N;
-    return g;
+    mat=transforms3d.euler.euler2mat(-angle[0],-angle[1],-angle[2]) 
+    mat=np.transpose(mat)
+    print(mat)
+    print(L.shape)
+    G=np.matmul(mat,L);  
+    G=G+displacement.reshape(-1,1)
+    
+    g=Coord()
+    g.x=G[0,...]
+    g.y=G[1,...]
+
+    g.z=G[2,...]
+    g.N=local.N
+    return g
 
 def Transform_global2local (angle,displacement,G):  
-    displacement=np.array(displacement);
+    displacement=np.array(displacement)
     g=np.append([G.x,G.y],[G.z],axis=0)
-    g=g-displacement.reshape(-1,1);
-    mat=transforms3d.euler.euler2mat(-angle[0],-angle[1],-angle[2]);
+    g=g-displacement.reshape(-1,1)
+    mat=transforms3d.euler.euler2mat(-angle[0],-angle[1],-angle[2])
     
-    local=np.matmul(mat,g);      
-    l=Coord();
-    l.x=local[0,...];
-    l.y=local[1,...];
-    l.z=local[2,...];
-    l.N=G.N;
-    return l;
+    local=np.matmul(mat,g)   
+    l=Coord()
+    l.x=local[0,...]
+    l.y=local[1,...]
+    l.z=local[2,...]
+    l.N=G.N
+    return l
 '''
 get the spherical coordinates from cartesian coordinates;
 '''
 def cartesian_to_spherical(x,y,z):
     
-    r=np.sqrt(x**2+y**2+z**2);
-    theta=np.arccos(z/r);
-    phi=np.arctan2(y,x);
+    r=np.sqrt(x**2+y**2+z**2)
+    theta=np.arccos(z/r)
+    phi=np.arctan2(y,x)
     
-    return r,theta,phi;
+    return r,theta,phi
     
 
