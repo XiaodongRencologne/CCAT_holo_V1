@@ -9,7 +9,7 @@ import h5py
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import pyvista as pv
-pv.set_jupyter_backend('static')#('trame')
+pv.set_jupyter_backend('trame')#('static')#
 
 
 from mirrorpy import profile,squarepanel,deformation,ImagPlane,adjuster
@@ -74,7 +74,18 @@ class CCAT_holo():
         self.output_filename=None
         self.View_3D=None
         self.Rx_3D=dict.fromkeys(holo_conf.keys(),[])
+        ### configure the 3D view widget
         self.widget=pv.Plotter(notebook=True)
+        _ = self.widget.add_axes(
+            line_width=5,
+            cone_radius=0.6,
+            shaft_length=0.7,
+            tip_length=0.3,
+            ambient=0.5,
+            label_size=(0.4, 0.16),
+        )
+        _ = self.widget.add_bounding_box(line_width=5, color='black')
+
         '''Geometrical parameters'''
         # define surface profile of M1 and M2 in their local coordinates
         M2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2.txt',delimiter=',')
@@ -192,31 +203,8 @@ class CCAT_holo():
         '''
         self.angle_f=[np.pi/2,0,0];    
         self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
-
-    def view(self,):
-        m2,m2_n,m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
-                                                    self.M2_size[0],self.M2_size[1],
-                                                    2,2,
-                                                    self.surface_m2
-                                                    )
-        m1,m1_n,m1_dA=squarepanel(self.Panel_center_M1[...,0],self.Panel_center_M1[...,1],
-                                                    self.M1_size[0],self.M1_size[1],
-                                                    2,2,
-                                                    self.surface_m1
-                                                    )
-        del(m2_n,m2_dA,m1_n,m1_dA)
-        m2=local2global(self.angle_m2,self.D_m2,m2)
-        m1=local2global(self.angle_m1,self.D_m1,m1)
-        points2 = np.c_[m2.x.reshape(-1), m2.y.reshape(-1), m2.z.reshape(-1)]
-        points1 = np.c_[m1.x.reshape(-1), m1.y.reshape(-1), m1.z.reshape(-1)]
-        del(m2,m1)
-        self.widget.clear()
-        cloud2 = pv.PolyData(points2)
-        cloud1 = pv.PolyData(points1)
-        mesh2=self.widget.add_mesh(cloud2.delaunay_2d(),show_edges=True)
-        mesh1=self.widget.add_mesh(cloud1.delaunay_2d(),show_edges=True)
-        self.widget.show()
-    def view2(self,):
+    def view(self):
+        '''show the telescope model'''
         self.widget.clear()
         m2=Coord()
         m1=Coord()
@@ -278,6 +266,7 @@ class CCAT_holo():
         self.widget.show()
 
     def view_Rx(self,Rx=[]):
+        '''highlight the required Receiver. '''
         for key in self.holo_conf:
             self._coords(self.holo_conf[key][0])
             cone=pv.Cone(center=tuple(self.D_f),
@@ -431,6 +420,7 @@ class CCAT_holo():
                                                                    source.y,source.z)).reshape(3,-1))
 
     def plot_beam(self,filename=None):
+        '''plot the lastest calculated beam'''
         if filename==None:
             filename=self.output_filename
         else:
@@ -461,7 +451,7 @@ class CCAT_holo():
             #print(beam.real)
             #print(beam.imag)
 
-    def build_holo(self,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77))):
+    def First_Beam_cal(self,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77))):
         '''Set the holographic design and make the first beam calculations'''
         if self.holo_conf==None:
             print('set up the holographic configuration, e.g. Rx positions & the related scanning tracjectory!')
@@ -477,7 +467,7 @@ class CCAT_holo():
                 print(keys,':',self.holo_conf[keys][0],self.holo_conf[keys][1])
                 self._beam(self.holo_conf[keys][1],Rx=self.holo_conf[keys][0],Matrix=True,S2_init=S2_init,S1_init=S1_init)
     
-    def mk_FF_5maps(self,fitting_param='panel adjusters',
+    def mk_FF(self,fitting_param='panel adjusters',
                          Device=T.device('cpu'),
                          Z_order=7,
                          Memory_reduc=False):
@@ -782,7 +772,8 @@ class CCAT_holo():
             self.FF=FF
         else:
             print('The forward function is not sucessfully created!!!!')
-
+    
+    
     '''
     methods for holographic analysis
     '''
