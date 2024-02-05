@@ -5,16 +5,37 @@
 The new **'Multi-map'** Holography method has been developed for measuring and discriminating the surface errors of the two reflectors of FYST by taking 5 different beam maps. The software was developed for the data analysis which can convert the 5 measured beam maps into 'Two' surface error maps.
 
 - [Installation](#Installation)
+- [FYST Geometry](#FYST Geometry)
+- [](#)
 
 ## Installation
-**This package just work with python3.**
+**This package just works with python3.**
 
+Following packages are required:
+1. numpy v1.21
+2. scipy v1.7
+3. pytorch 1.12
+4. transforms3d v0.4.1
+5. h5py v3.6.0
+6. pyvista
 
-You need to install the packages in the requirements file using
+You can install these packages using the command:
+
 'pip install -r requirements'
 
+When you have all required packages, you can clone or download the 'ccat_holo' repository from github or uni-koeln gitlab. 
+
+```shell
+git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
+or
+git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
+```
 
 
+
+
+## FYST Geometry
+![FYST_optics.png](README_test_files/FYST_optics.png)
 
 
 ```python
