@@ -1,3 +1,19 @@
+# ccat_holo
+
+'ccat_holo' is a python package which is designed to analyze the holographic measurement data for the Fred Young Sub-mm Telescope. The telescope uses a special 'Crossed-Dragone' optics design, which consists of two 6-m reflectors. Its two reflectors both have to be aligned to be better than 10um (goal of < 7um). 
+- [Installation](#  Installation)
+
+The new **'Multi-map'** Holography method has been developed for measuring and discriminating the surface errors of the two reflectors of FYST by taking 5 different beam maps. The software was developed for the data analysis which can convert the 5 measured beam maps into 'Two' surface error maps.
+
+## Installation
+### This package just work with python3 with verion >=3.7
+You need to install the packages in the requirements file using
+'pip install -r requirements'
+
+
+
+
+
 ```python
 from ccat_holo.Pyccat import CCAT_holo
 import time
