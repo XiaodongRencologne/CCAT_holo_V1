@@ -1,0 +1,7 @@
+h5py==3.6.0
+matplotlib==3.5.1
+numpy==1.21
+scipy==1.7
+torch==1.12
+transforms3d==0.4.1
+pyvista[jupyter]>=0.38.1
