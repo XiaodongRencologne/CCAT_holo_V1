@@ -5,8 +5,8 @@
 The new **'Multi-map'** Holography method has been developed for measuring and discriminating the surface errors of the two reflectors of FYST by taking 5 different beam maps. The software was developed for the data analysis which can convert the 5 measured beam maps into 'Two' surface error maps.
 
 - [Installation](#Installation)
-- [FYST Geometry](#FYST Geometry)
-- [](#)
+- [FYST Geometry](#FYST_Geometry)
+- [Coordinate system](#Coordinate System)
 
 ## Installation
 **This package just works with python3.**
@@ -27,15 +27,51 @@ When you have all required packages, you can clone or download the 'ccat_holo' r
 
 ```shell
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
+'''
 or
+'''shell
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ```
 
-
-
-
 ## FYST Geometry
-![FYST_optics.png](README_test_files/FYST_optics.png)
+The files in the folder 'CCAT_folder' is used to set the FYST telescope's geometry, operating frequency and the beam pattern of the holo-Rx. 
+
+** Electrical Setting **
+
+For the FYST holographic experiment, you do not need to change any settings. Maybe only the electrical parameters given in the file of 'electrical_parameter.txt' need to be changed based on the practical experiments.
+
+'electrical_parameter.txt'
+freq/GHz, 296  # GHz
+
+Edge_taper, -8 # dB
+
+taper_angle, 11.893
+
+Here, you can set the operating frequency and the illumination edge taper and taper angle which is related to the Guassian beam pattern of the holographic receiver. 
+
+** Panel Size, adjuster positions, and Sampling Number **
+
+These are defined in the 'input.txt' file.
+
+## Coordinate systems
+
+FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The coordinates of the 5 Rx moutning points and the cooresponding scan path must be expressed in the 'coord_Rx' and 'coord_Scan' coordinate systems shown in below figure.
+
+
+The field points defined by the real telescope rotation axes must be converted to the coordinates 
+
+![FYST_optics.png](attachment:FYST_optics.png)
+
+## 
+
+
+
+
+
+
+```python
+## C
+```
 
 
 ```python
