@@ -6,7 +6,8 @@ The new **'Multi-map'** Holography method has been developed for measuring and d
 
 - [Installation](#Installation)
 - [FYST Geometry](#FYST_Geometry)
-- [Coordinate system](#Coordinate System)
+- [Coordinate systems](#Coordinate_systems)
+- [Configuration of the FYST Holography System](#Configuration_of_the_FYST_Holography_System)
 
 ## Installation
 **This package just works with python3.**
@@ -33,7 +34,7 @@ or
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ```
 
-## FYST Geometry
+## FYST_Geometry
 The files in the folder 'CCAT_folder' is used to set the FYST telescope's geometry, operating frequency and the beam pattern of the holo-Rx. 
 
 ** Electrical Setting **
@@ -53,16 +54,21 @@ Here, you can set the operating frequency and the illumination edge taper and ta
 
 These are defined in the 'input.txt' file.
 
-## Coordinate systems
+## Coordinate_systems
 
-FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The coordinates of the 5 Rx moutning points and the cooresponding scan path must be expressed in the 'coord_Rx' and 'coord_Scan' coordinate systems shown in below figure.
+FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The coordinates of the 5 Rx mounting points and the cooresponding scan path must be expressed in the 'coord_Rx' and 'coord_Scan' coordinate systems shown in below figure.
 
 
-The field points defined by the real telescope rotation axes must be converted to the coordinates 
+The field points defined by the real telescope rotation axes must be converted to the coordinates in the Scan coordinate system 'Coord_scan'.
 
-![FYST_optics.png](attachment:FYST_optics.png)
+![image info](README_test_files/FYST_optics.png)
+![FYST_optics.png](attachment:/FYST_optics.png)
 
-## 
+## Initialization and Holography configuration
+
+'CCAT_holo' is the basic tool developed to 
+
+
 
 
 
@@ -102,18 +108,10 @@ Output_folder='Analysis1'
 # 4. Create the FYST holography Model and check the telescope model and 
 # holographic setup in the 3D view.
 Model=CCAT_holo(Model_folder,Output_folder,holo_conf=holo_setup)
-#Model.view()
+Model.view()
 
 #Model.view_Rx(Rx=['Rx1'])
 ```
-
-    FYST telescope model has been created!!
-    [-1.2490457723982542, 0, 0] [0, -4799.999999999999, 0]
-    
-
-
-    Widget(value="<iframe src='http://localhost:49793/index.html?ui=P_0x2006fa87e80_0&reconnect=auto' style='width…
-
 
 
 ```python
