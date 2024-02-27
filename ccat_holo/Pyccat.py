@@ -99,7 +99,7 @@ class CCAT_holo():
         # panel size, center, and number of sampling points on each panel
         self.Panel_center_M2=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',')
         self.Panel_center_M1=np.genfromtxt(Model_folder+'/L_m1.txt',delimiter=',')
-        parameters=np.genfromtxt(Model_folder+'/input.txt',delimiter=',')[:,1]
+        parameters=np.genfromtxt(Model_folder+'/Model.txt',delimiter=',')[:,1]
 
         self.M2_size=parameters[0:2]
         self.M1_size=parameters[2:4]
