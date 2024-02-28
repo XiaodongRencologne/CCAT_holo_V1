@@ -39,10 +39,9 @@ The details of the FYST geometry (Figure 1) is defined by files in the 'CCAT_mod
 ![image info](pictures/FYST_model1.png)  
 *Figure 1: FYST optical layout and 5 receiver locations.*
 
-Here, we explain the meaning of each files.
-
+Here, we explain the parameters in the files.  
 **Mirror surface profile: 'coeffi_m1.txt/coeffi_m2.txt'**
-The files record the coefficients of the 2D polynominals which are used to describe the surface profiles of the FYST's two mirrors (M1 and M2). x and y coordinates of the 2D polynomials are normalized by a factor of 3000mm (radius of the FYST's aperture). The two mirror surfaces are defined in their local coordinate systems. 
+The files record the coefficients of the 2D polynominals which are used to describe the surface profiles of the FYST's two mirrors (M1 and M2). x and y coordinates of the 2D polynomials are normalized by a factor of 3000mm (radius of the FYST's aperture). The two mirror surfaces are defined in their local coordinate systems.   
 $$ z=\sum_{i,j=0}{c_{ij}{\left({x}\over R\right)}^{i}{\left({y}\over R\right)}^{j}}$$
 
 **Panel positions: 'L_m1.txt and L_m2.txt':**
