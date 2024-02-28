@@ -4,12 +4,10 @@
 
 The new **'Multi-map'** Holography method has been developed for measuring and discriminating the surface errors of the two reflectors of FYST by taking 5 different beam maps. The software was developed for the data analysis which can convert the 5 measured beam maps into 'Two' surface error maps.
 
-- [Installation](#Installation)
-- [FYST Geometry](#FYST-Geometry)
-- [Coordinate Systems](#Coordinate-Systems)
-- [FYST Holography Configuration](#Configurate-the-FYST-Holographic-System)
-
-- [Configuration of the FYST Holography System]
+1. [Installation](#Installation)
+2. [FYST Geometry](#FYST-Geometry)
+3. [Coordinate Systems](#Coordinate-Systems)
+4. [Configurate the FYST Holography](#Configurate-the-FYST-Holographic-System)
 
 ## Installation
 **This package just works with python3.**
@@ -22,12 +20,11 @@ Following packages are required:
 5. h5py v3.6.0
 6. pyvista
 
-You can install these packages using the command:
-
-'pip install -r requirements'
-
-When you have all required packages, you can clone or download the 'ccat_holo' repository from github or uni-koeln gitlab. 
-
+You can install these packages using the command:  
+```shell
+'pip install -r requirements' 
+``` 
+When you have all required packages, you can clone or download the 'ccat_holo' repository from github or uni-koeln gitlab.  
 ```shell
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ```
@@ -39,8 +36,7 @@ git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ## FYST Geometry
 The details of the FYST geometry (Figure 1) is defined by files in the 'CCAT_model' folder. **For the FYST holographic analysis, you don't need to modifiy anything.**
 
-![image info](pictures/FYST_model1.png)
-
+![image info](pictures/FYST_model1.png)  
 *Figure 1: FYST optical layout and 5 receiver locations.*
 
 Here, we explain the meaning of each files.
@@ -62,6 +58,7 @@ The size of the mirror panels (700x710mm on M2 and 670x750mm on M1) and position
 
 ## Coordinate Systems
 
+
 FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The receiver mounting points and the cooresponding antenna scanning trajectory must be expressed in the **'coord_Rx'** & **'coord_Scan'** coordinate systems indicated in below Figure 2.
 
 In the practical holographic measurement, The coordinates of the recorded field points need to be converted into the points expressed in the 'coord_scan' frame.
@@ -72,9 +69,12 @@ In the practical holographic measurement, The coordinates of the recorded field 
 
 *Figure 2. Optical layout of FYST and its coordinate systems.*
 
-## Configurate the FYST Holographic System
 
-**Set Electrical parameters**
+## Configurate the FYST Holography
+
+
+1 . Set electrical parameters: operating frequency and the holo-Rx beam.
+
 
 The measuring frequency of the holo-system and Guassian beam of the used holo-Rx are given in file 'electrical_parameter.txt'.
 |  Parameters        |  Sampling Points  |
@@ -85,30 +85,19 @@ The measuring frequency of the holo-system and Guassian beam of the used holo-Rx
 
 The Gaussian beam of the receiver is set by the illumination edge taper at a specific taper angle. 
 
-****
+2 . Define the FYST holography Model and initialize the model
 
-
-
-
-
-
-
-
-## Initialization and Holography configuration
-
-'CCAT_holo' is the basic tool developed to 
-
-
-
-
-**x**
+All required methods for the FYST holography data analysis are integrated in the class <em>**'CCAT_holo'**<em> in the package <em>**ccat_holo.Pyccat**<em>. Before starting the data analysis, we should first define the FYST holography model correctly. In the following example, I will demonstrate the code about the holo-mode defination. You also can check the code in jupyter notebook [Initialization_FYST_holo](examples/1_initialization.ipynb).
 
 
 ```python
+# 0. Import the CCAT_holo model
 from ccat_holo.Pyccat import CCAT_holo
-import time
-import torch as T
 ```
+
+<em>**CCAT_holo**<em> requires 3 input parameters. First is the folder 'CCAT_model' defining the [FYST geometry model](#fyst-geometry).  
+<em>**Output_folder**<em> is the chosen folder to store the matrixes of the initial beam calculation.  
+Then we should define 5 receiver mounting points and their measured field points. These are set by a python dictionary seen below.
 
 
 ```python
@@ -132,6 +121,12 @@ Output_folder='Analysis1'
 # 4. Create the FYST holography Model and check the telescope model and 
 # holographic setup in the 3D view.
 Model=CCAT_holo(Model_folder,Output_folder,holo_conf=holo_setup)
+```
+
+
+
+
+```python
 Model.view()
 
 #Model.view_Rx(Rx=['Rx1'])
