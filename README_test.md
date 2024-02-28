@@ -5,9 +5,11 @@
 The new **'Multi-map'** Holography method has been developed for measuring and discriminating the surface errors of the two reflectors of FYST by taking 5 different beam maps. The software was developed for the data analysis which can convert the 5 measured beam maps into 'Two' surface error maps.
 
 - [Installation](#Installation)
-- [FYST Geometry](#FYST_Geometry)
-- [Coordinate systems](#Coordinate_systems)
-- [Configuration of the FYST Holography System](#Configuration_of_the_FYST_Holography_System)
+- [FYST Geometry](#FYST-Geometry)
+- [Coordinate Systems](#Coordinate-Systems)
+- [FYST Holography Configuration](#Configurate-the-FYST-Holographic-System)
+
+- [Configuration of the FYST Holography System]
 
 ## Installation
 **This package just works with python3.**
@@ -28,41 +30,69 @@ When you have all required packages, you can clone or download the 'ccat_holo' r
 
 ```shell
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
-'''
+```
 or
-'''shell
+```shell
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ```
 
-## FYST_Geometry
-The files in the folder 'CCAT_folder' is used to set the FYST telescope's geometry, operating frequency and the beam pattern of the holo-Rx. 
+## FYST Geometry
+The details of the FYST geometry (Figure 1) is defined by files in the 'CCAT_model' folder. **For the FYST holographic analysis, you don't need to modifiy anything.**
 
-** Electrical Setting **
+![image info](pictures/FYST_model1.png)
 
-For the FYST holographic experiment, you do not need to change any settings. Maybe only the electrical parameters given in the file of 'electrical_parameter.txt' need to be changed based on the practical experiments.
+*Figure 1: FYST optical layout and 5 receiver locations.*
 
-'electrical_parameter.txt'
-freq/GHz, 296  # GHz
+Here, we explain the meaning of each files.
 
-Edge_taper, -8 # dB
+**Mirror surface profile: 'coeffi_m1.txt/coeffi_m2.txt'**
+The files record the coefficients of the 2D polynominals which are used to describe the surface profiles of the FYST's two mirrors (M1 and M2). x and y coordinates of the 2D polynomials are normalized by a factor of 3000mm (radius of the FYST's aperture). The two mirror surfaces are defined in their local coordinate systems. 
+$$ z=\sum_{i,j=0}{c_{ij}{\left({x}\over R\right)}^{i}{\left({y}\over R\right)}^{j}}$$
 
-taper_angle, 11.893
+**Panel positions: 'L_m1.txt and L_m2.txt':**
+The files define the panel layout in M1 and M2. They record the list of panel center positions. 
 
-Here, you can set the operating frequency and the illumination edge taper and taper angle which is related to the Guassian beam pattern of the holographic receiver. 
+**Sampling number: 'Model.txt':**
+The size of the mirror panels (700x710mm on M2 and 670x750mm on M1) and positions of the 4 corner panel adjusters can be set in this file.  The required sampling points on the mirror panels are defined in the file. The sampling range and points in the intermediate focal (IF) plane are also given here. 
+|                    |  Size        |  Sampling Points  |
+| ------------------ |--------------| ----------------- |
+| M2                 | 700x710mm    | 15x15             |
+| M1                 | 670x750mm    | 14x14             |
+| IF                 | 540x540mm    | 121x121           |
 
-** Panel Size, adjuster positions, and Sampling Number **
+## Coordinate Systems
 
-These are defined in the 'input.txt' file.
+FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The receiver mounting points and the cooresponding antenna scanning trajectory must be expressed in the **'coord_Rx'** & **'coord_Scan'** coordinate systems indicated in below Figure 2.
 
-## Coordinate_systems
+In the practical holographic measurement, The coordinates of the recorded field points need to be converted into the points expressed in the 'coord_scan' frame.
 
-FYST holography meausrement will measure 5 beam maps by puting the Rx at 5 different points. The coordinates of the 5 Rx mounting points and the cooresponding scan path must be expressed in the 'coord_Rx' and 'coord_Scan' coordinate systems shown in below figure.
+**'Coord_M1' and 'Coord_M2'** are the frames for defining the mirror layout.
+
+![image info](pictures/FYST_optics.png)
+
+*Figure 2. Optical layout of FYST and its coordinate systems.*
+
+## Configurate the FYST Holographic System
+
+**Set Electrical parameters**
+
+The measuring frequency of the holo-system and Guassian beam of the used holo-Rx are given in file 'electrical_parameter.txt'.
+|  Parameters        |  Sampling Points  |
+|--------------------| ----------------- |
+| freq/GHz           | 296               |
+| Edge_taper/dB      | -8                |
+| taper_angle/deg    | 11.894            |
+
+The Gaussian beam of the receiver is set by the illumination edge taper at a specific taper angle. 
+
+****
 
 
-The field points defined by the real telescope rotation axes must be converted to the coordinates in the Scan coordinate system 'Coord_scan'.
 
-![image info](README_test_files/FYST_optics.png)
-![FYST_optics.png](attachment:/FYST_optics.png)
+
+
+
+
 
 ## Initialization and Holography configuration
 
@@ -71,13 +101,7 @@ The field points defined by the real telescope rotation axes must be converted t
 
 
 
-
-
-
-
-```python
-## C
-```
+**x**
 
 
 ```python
