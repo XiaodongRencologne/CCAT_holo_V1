@@ -122,14 +122,32 @@ Output_folder='Analysis1'
 Model=CCAT_holo(Model_folder,Output_folder,holo_conf=holo_setup)
 ```
 
+    FYST telescope model has been created!!
+    
 
+- Using the method <em>'Model.view'<em> can show the 3D model of the defined antenna and the pre-defined 5 Receiver points. 
 
 
 ```python
-Model.view()
-
-#Model.view_Rx(Rx=['Rx1'])
+Model.view() # Show 3D FYST model and its receivers.
 ```
+
+    [-1.2490457723982542, 0, 0] [0, -4799.999999999999, 0]
+    
+
+
+    Widget(value="<iframe src='http://localhost:54137/index.html?ui=P_0x2bb253495b0_0&reconnect=auto' style='width…
+
+
+![image info](pictures/FYST_3D.png)
+
+
+```python
+Model.view_Rx(Rx=['Rx1']) # This method can highlight the chosen reciever horns.
+```
+
+### Start the first beam calculations
+This software package uses fitting algorithm and requires thousands fitting loop to find the best fit panel distortions. To speed up the beam calculation called forward function, we run a time-cost and accurate beam calculation but keep the intermediate values. 
 
 
 ```python
