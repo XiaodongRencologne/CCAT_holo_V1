@@ -12,8 +12,8 @@ Nx_M2,15
 Ny_M2,15
 Nx_M1,14
 Ny_M1,14
-fimag_Nx,201
-fimag_Ny,201
-fimag_sizex,700
-fimag_sizey,700
+fimag_Nx,121
+fimag_Ny,121
+fimag_sizex,520
+fimag_sizey,520
 
