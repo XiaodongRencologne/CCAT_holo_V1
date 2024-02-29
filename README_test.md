@@ -8,7 +8,9 @@ The new **'Multi-map'** Holography method has been developed for measuring and d
 2. [FYST Geometry](#FYST-Geometry)
 3. [Coordinate Systems](#Coordinate-Systems)
 4. [Configurate the FYST Holography](#Configurate-the-FYST-Holography)
-    4.1 []
+    1. [Set electrical parameters: operating frequency and the holo-Rx beam](#1-set-electrical-parameters-operating-frequency-and-the-holo-rx-beam)
+    2. [Define the FYST Holo-model](#2-define-and-initialize-the-fyst-holo-model)
+    3. [Start the First Time-cost Beam calculation](#3-start-the-first-time-cost-beam-calculation)
 
 ## Installation
 **This package just works with python3.**
@@ -71,8 +73,7 @@ In the practical holographic measurement, The coordinates of the recorded field 
 
 
 ## Configurate the FYST Holography
-**1 . Set electrical parameters: operating frequency and the holo-Rx beam.**
-### Set electrical parameters: operating frequency and the holo-Rx beam
+### 1 Set electrical parameters: operating frequency and the holo-Rx beam
 
 
 The measuring frequency of the holo-system and Guassian beam of the used holo-Rx are given in file 'electrical_parameter.txt'.
@@ -84,7 +85,7 @@ The measuring frequency of the holo-system and Guassian beam of the used holo-Rx
 
 The Gaussian beam of the receiver is set by the illumination edge taper at a specific taper angle. 
 
-**2 . Define the FYST holography Model and initialize the model**
+### 2 Define and initialize the FYST Holo-model
 
 All required methods for the FYST holography data analysis are integrated in the class <em>**'CCAT_holo'**<em> in the package <em>**ccat_holo.Pyccat**<em>. Before starting the data analysis, we should first define the FYST holography model correctly. In the following example, I will demonstrate the code about the holo-mode defination. You also can run the code in jupyter notebook [Initialization_FYST_holo](examples/1_initialization.ipynb).
 
@@ -122,6 +123,9 @@ Output_folder='Analysis1'
 Model=CCAT_holo(Model_folder,Output_folder,holo_conf=holo_setup)
 ```
 
+    FYST telescope model has been created!!
+    
+
 - Using the method <em>'Model.view'<em> can show the 3D model of the defined antenna and the pre-defined 5 Receiver points. 
 
 
@@ -136,10 +140,12 @@ Model.view() # Show 3D FYST model and its receivers.
 Model.view_Rx(Rx=['Rx1']) # This method can highlight the chosen reciever horns.
 ```
 
-### First Beam Calculations
-This software package uses fitting algorithm and requires thousands fitting loop to find the best fit panel distortions. To speed up the beam calculation called forward function, we run a 'time-cost' and accurate beam calculation, and save the intermediate values in the given <em>**Output_folder**<em>. 
+### 3. Start the First Time-cost Beam calculation
+This software package uses fitting algorithm and requires thousands fitting loop to find the best fit panel distortions. To speed up the beam calculation called forward function, we run a 'time-cost' and accurate beam calculation, and save the intermediate values (e.g., complex field values on M1, M2, IF Plane and the desired source region, and the field transfer metrixes between M1, M2 and the spherical face in source) as HDF5 binary data format and store the data in the given <em>**Output_folder**<em>.  
 
-The first time-cost beam calculation can be done with running the function <em>**Model.First_Beam_cal()**<em>
+The first time-cost beam calculation can be done by running the function <em>**Model.First_Beam_cal()**<em>.  
+
+**For one independent holographic measurement, we just need to do the time-cost beam calculation once.** 
 
 
 ```python
@@ -152,6 +158,37 @@ Model.First_Beam_cal()
 '''
 
 ```
+
+    The holographic setup:
+    Rx1 : [0, 0, 600] scan/on-axis.txt
+    Rx2 : [400, 400, 600] scan/400_400_600.txt
+    Rx3 : [400, -400, 600] scan/400_-400_600.txt
+    Rx4 : [-400, 400, 600] scan/-400_400_600.txt
+    Rx5 : [-400, -400, 600] scan/-400_-400_600.txt
+    
+    ***Start the initial beam calculations 
+    ***and prepare the required Matrixes used to speed up the forward beam calculations.
+    Rx1 : [0, 0, 600] scan/on-axis.txt
+    time used: 307.33998059999976
+    Rx2 : [400, 400, 600] scan/400_400_600.txt
+    time used: 369.1720681000006
+    Rx3 : [400, -400, 600] scan/400_-400_600.txt
+    time used: 413.8099065999995
+    Rx4 : [-400, 400, 600] scan/-400_400_600.txt
+    time used: 291.27043390000017
+    Rx5 : [-400, -400, 600] scan/-400_-400_600.txt
+    time used: 304.2282126
+    
+
+
+
+
+    " We only need to run this calculation in the beginning\n of the data analysis. All the setup defined in 'holo_config'\n will be computed. The intermediate computed data will be\n stored in the directory 'output_folder', here is 'Analysis1'.\n"
+
+
+
+## Make the 'Forward' Beam calculation function (Model.FF)
+
 
 
 ```python
