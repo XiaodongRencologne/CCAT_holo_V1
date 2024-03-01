@@ -11,7 +11,8 @@ The new **'Multi-map'** Holography method has been developed for measuring and d
     1. [Set electrical parameters: operating frequency and the holo-Rx beam](#1-set-electrical-parameters-operating-frequency-and-the-holo-rx-beam)
     2. [Define the FYST Holo-model](#2-define-and-initialize-the-fyst-holo-model)
     3. [Start the First Time-cost Beam calculation](#3-start-the-first-time-cost-beam-calculation)
-
+5. [Make the 'Forward' Beam calculation function (Model.FF)](#make-the-forward-beam-calculation-function-modelff)
+6. [Data Analysis](#data-analysis)
 ## Installation
 **This package just works with python3.**
 
@@ -124,9 +125,6 @@ Output_folder='Analysis1'
 Model=CCAT_holo(Model_folder,Output_folder,holo_conf=holo_setup)
 ```
 
-    FYST telescope model has been created!!
-    
-
 - Using the method <em>'Model.view'<em> can show the 3D model of the defined antenna and the pre-defined 5 Receiver points. 
 
 
@@ -161,34 +159,6 @@ Model.First_Beam_cal()
 
 ```
 
-    The holographic setup:
-    Rx1 : [0, 0, 600] scan/on-axis.txt
-    Rx2 : [400, 400, 600] scan/400_400_600.txt
-    Rx3 : [400, -400, 600] scan/400_-400_600.txt
-    Rx4 : [-400, 400, 600] scan/-400_400_600.txt
-    Rx5 : [-400, -400, 600] scan/-400_-400_600.txt
-    
-    ***Start the initial beam calculations 
-    ***and prepare the required Matrixes used to speed up the forward beam calculations.
-    Rx1 : [0, 0, 600] scan/on-axis.txt
-    time used: 149.97290759999998
-    Rx2 : [400, 400, 600] scan/400_400_600.txt
-    time used: 151.30981620000003
-    Rx3 : [400, -400, 600] scan/400_-400_600.txt
-    time used: 155.64836820000005
-    Rx4 : [-400, 400, 600] scan/-400_400_600.txt
-    time used: 145.1400549
-    Rx5 : [-400, -400, 600] scan/-400_-400_600.txt
-    time used: 156.17648170000007
-    
-
-
-
-
-    " We only need to run this calculation in the beginning\n of the data analysis. All the setup defined in 'holo_config'\n will be computed. The intermediate computed data will be\n stored in the directory 'output_folder', here is 'Analysis1'.\n"
-
-
-
 ## Make the 'Forward' Beam calculation function (Model.FF)
 **Linear approximation**
 Because the surface deformations of the two mirrors are much smaller than the operating wavelength (~1mm), we implement linear approximations to speed up the beam computation for the given panel distortions, which assums that the panel distortions only modify the phase of the EM fields on the surfaces of M1 and M2 and the phase changes is linear to the panel offset.
@@ -220,7 +190,26 @@ Model.mk_FF(fitting_param='panel adjusters',Device=T.device('cpu'))
 
 ```
 
+## Data Analysis
+When the Forward Function is built, we can start the mirror surface analysis by using the measured 5 maps. The method uses the numerical optimization algorithm to tune the movements of the panel adjusters (**$S_{M2/M1}$**) which can produce the best fit to the measured beam data. Because of the unavoidable systematic errors in the practical system, for example, antenna pointing error causing phase tilt in aperture and inaccuracy of the source and receiver beam patterns, parameters <em>Amp_ap<em> and <em>Phase_ap<em> also needed to be fitted. 
+
+According to the experience of numerical simulations and the practical laboratory test, processing the fitting in two steps can save the inference time and avoid undesired local minimums of the panel adjuster values. 
+
+First, we only find the parameters <em>Amp_ap<em> and <em>Phase_ap<em> (called large-scale parameters hereafter) to estiminate the optical misalignment errors existed in the system. The function in the defined model is '**<em>Model.fit_LP(Meas_maps,Device=T.device('cpu'))<em>**'.  
+
+**<em>Model.fit_LP(Meas_maps,Device=T.device('cpu'))<em>:**  
+<em>Meas_maps<em>: the data of the measured 5 beams. Each beam has two raws of data which are real and imaginary of the complex measured fields. So 'Meas_maps' is a tensor with shape of (5x2,Field points number). If the Model.FF function is built in the GPU frame, here the parameter 'Device' must be consistent to the setup 0f 'Model.FF'.
+
+After the large-scale parameters fitting, the found values are used as the initial input for the mirror surface fitting. The used method is '**<em>Model.fit_surface<em>**'
+
+We will execute a quick fitting process by only fitting the aperture correction parameters ()
+
+
+
+
+
+
 
 ```python
-# 7. Start
+
 ```
