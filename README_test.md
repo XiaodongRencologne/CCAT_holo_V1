@@ -87,12 +87,13 @@ The Gaussian beam of the receiver is set by the illumination edge taper at a spe
 
 ### 2 Define and initialize the FYST Holo-model
 
-All required methods for the FYST holography data analysis are integrated in the class <em>**'CCAT_holo'**<em> in the package <em>**ccat_holo.Pyccat**<em>. Before starting the data analysis, we should first define the FYST holography model correctly. In the following example, I will demonstrate the code about the holo-mode defination. You also can run the code in jupyter notebook [Initialization_FYST_holo](examples/1_initialization.ipynb).
+All required methods for the FYST holography data analysis are integrated in the class <em>**'CCAT_holo'**<em> in the package <em>**ccat_holo.Pyccat**<em>. Before starting the data analysis, we should first define the FYST holography model correctly. In the following example, I will demonstrate the code about the holo-mode defination. You also can run the code in jupyter notebook [Initialization_FYST_holo](examples/1_initialization_FYST_holo.ipynb).
 
 
 ```python
 # 0. Import the CCAT_holo model
 from ccat_holo.Pyccat import CCAT_holo
+import torch as T # import pytorch package
 ```
 
 <em>**CCAT_holo**<em> requires 3 input parameters. First is the folder 'CCAT_model' defining the [FYST geometry model](#fyst-geometry).  
@@ -104,11 +105,11 @@ Then we should define 5 receiver mounting points and their measured field points
 # 1. Model folder
 Model_folder='CCAT_model'
 # 2. Configuration of the Holography system
-holo_setup={'Rx1':([0,0,600],'scan/on-axis.txt'), 
-            'Rx2':([400,400,600],'scan/400_400_600.txt'),
-            'Rx3':([400,-400,600],'scan/400_-400_600.txt'),
-            'Rx4':([-400,400,600],'scan/-400_400_600.txt'),
-            'Rx5':([-400,-400,600],'scan/-400_-400_600.txt')
+holo_setup={'Rx1':([0,0,600],'scan/51/on-axis.txt'), 
+            'Rx2':([400,400,600],'scan/51/400_400_600.txt'),
+            'Rx3':([400,-400,600],'scan/51/400_-400_600.txt'),
+            'Rx4':([-400,400,600],'scan/51/-400_400_600.txt'),
+            'Rx5':([-400,-400,600],'scan/51/-400_-400_600.txt')
             }
 # Define 5 receiver positions in the 'Coord_Rx' system, e.g [+/-400,+/-400,600]
 # and their field points that are stored in file 'scan/400_400_600.txt'. The field
@@ -141,7 +142,7 @@ Model.view_Rx(Rx=['Rx1']) # This method can highlight the chosen reciever horns.
 ```
 
 ### 3. Start the First Time-cost Beam calculation
-This software package uses fitting algorithm and requires thousands fitting loop to find the best fit panel distortions. To speed up the beam calculation called forward function, we run a 'time-cost' and accurate beam calculation, and save the intermediate values (e.g., complex field values on M1, M2, IF Plane and the desired source region, and the field transfer metrixes between M1, M2 and the spherical face in source) as HDF5 binary data format and store the data in the given <em>**Output_folder**<em>.  
+This software package uses fitting algorithm and requires thousands fitting loop to find the best fit panel distortions. To speed up the beam calculation called forward function, we run a 'time-cost' and accurate beam calculation, and save the intermediate values (e.g., complex field values on M1, M2, IF Plane and the desired source region, and the field transfer metrixes between M1, M2 and the spherical face in source) as HDF5 binary data format and store the data in the given <em>**Output_folder**<em>. Combining several linear approximations can significantly reduce computing time by three orders of magnitude.
 
 The first time-cost beam calculation can be done by running the function <em>**Model.First_Beam_cal()**<em>.  
 
@@ -150,12 +151,13 @@ The first time-cost beam calculation can be done by running the function <em>**M
 
 ```python
 # 5. Running the time-consuming first beam calculation.
-Model.First_Beam_cal()
 ''' We only need to run this calculation in the beginning
  of the data analysis. All the setup defined in 'holo_config'
  will be computed. The intermediate computed data will be
  stored in the directory 'output_folder', here is 'Analysis1'.
 '''
+Model.First_Beam_cal()
+
 
 ```
 
@@ -169,15 +171,15 @@ Model.First_Beam_cal()
     ***Start the initial beam calculations 
     ***and prepare the required Matrixes used to speed up the forward beam calculations.
     Rx1 : [0, 0, 600] scan/on-axis.txt
-    time used: 307.33998059999976
+    time used: 149.97290759999998
     Rx2 : [400, 400, 600] scan/400_400_600.txt
-    time used: 369.1720681000006
+    time used: 151.30981620000003
     Rx3 : [400, -400, 600] scan/400_-400_600.txt
-    time used: 413.8099065999995
+    time used: 155.64836820000005
     Rx4 : [-400, 400, 600] scan/-400_400_600.txt
-    time used: 291.27043390000017
+    time used: 145.1400549
     Rx5 : [-400, -400, 600] scan/-400_-400_600.txt
-    time used: 304.2282126
+    time used: 156.17648170000007
     
 
 
@@ -188,6 +190,17 @@ Model.First_Beam_cal()
 
 
 ## Make the 'Forward' Beam calculation function (Model.FF)
+**Linear approximation**
+Because the surface deformations of the two mirrors are much smaller than the operating wavelength (~1mm), we implement linear approximations to speed up the beam computation for the given panel distortions, which assums that the panel distortions only modify the phase of the EM fields on the surfaces of M1 and M2 and the phase changes is linear to the panel offset.
+
+
+Using the results from the costly first beam computation and the linear approximations, the computing time of one beam prediction can be reduced to <1s. Implementing the advanced GPU technique can further accelerate the calculation. 
+
+<em>**Model.FF**<em> is the created beam forward function with panel adjuster movements as its input parameters.  
+<em>**Model.FF(S,Amp_ap, Phase_ap)**<em>: S is the displacement of panel adjusters on M1 and M2, <em>Amp_ap<em> is a list of parameters used to correct the illumination tape of the telescope. And <em>Phase_ap<em> is used to express the field phase difference in aperture between the designed holography model and the practical measurement.
+
+We can build the function <em>**Model.FF**<em> by runing <em>**Model.mk_FF(fitting_param='panel adjusters',Device=T.device('cpu'))**<em>. If <em>Device<em> is set by "T.device('cude:0')" and the Nvidia Graphic card is available, the model can be loaded onto Graphic card for acceleration.
+
 
 
 
@@ -197,9 +210,8 @@ Model.First_Beam_cal()
 # of the panel adjusters or coefficients of Zernike polynomial as the fitting paramters.
 # If fitting_param is 'zernike', the surface deviations will be described by 
 # the summation of zernike polynimals, and the maximum zernike order is 7th.
-Model.mk_FF(fitting_param='panel adjusters',
-                  Device=T.device('cpu'),
-                  Z_order=7)
+Model.mk_FF(fitting_param='panel adjusters',Device=T.device('cpu'))
+#Model.mk_FF(fitting_param='panel adjusters',Device=T.device('cuda:0'))
 
 # The function also supports the GPU acceleration by setting the 'Device' to 
 # 'T.device('cuda:0')'.
