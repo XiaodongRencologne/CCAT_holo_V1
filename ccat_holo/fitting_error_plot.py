@@ -2,35 +2,41 @@
 # coding: utf-8
 
 # In[5]:
-
-
+import sys,os
+sys.path.append('.')
 import numpy as np;
 import matplotlib.pyplot as plt;
+from mirrorpy import deformation,adjuster,model_ccat
 
-from Pyccat import model_ccat,read_input;
-from Kirchhoffpy.mirrorpy import deformation,adjuster;
+from zernike_torch import mkCFn as make_zernike;
 
-'''
-read input data file
-'''
-inputfile='CCAT_model'
-coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,distance,edge_taper,Angle_taper,k=read_input(inputfile);
+c=299792458
 
-M2_size=M2_size+1.2;
-M1_size=M1_size+1.2;
-M2_N=[13,13]
-M1_N=[13,13]
-'''
-build model
-'''
-ad_m2=np.zeros(5*List_m2.shape[0]);
-ad_m1=np.zeros(5*List_m1.shape[0]);
-m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
-                                                                  coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M2_N[1],R1,
-                                                                  fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
-                                                                  ad_m2,ad_m1,p_m2,q_m2,p_m1,q_m1);
+def read_input(inputfile):
+    coefficient_m2=np.genfromtxt(inputfile+'/coeffi_m2.txt',delimiter=',');
+    coefficient_m1=np.genfromtxt(inputfile+'/coeffi_m1.txt',delimiter=',');
+    List_m2=np.genfromtxt(inputfile+'/L_m2.txt',delimiter=',');
+    List_m1=np.genfromtxt(inputfile+'/L_m1.txt',delimiter=',');
+    parameters=np.genfromtxt(inputfile+'/model.txt',delimiter=',')[...,1];
+    electro_params=np.genfromtxt(inputfile+'/electrical_parameters.txt',delimiter=',')[...,1];
+    
+    M2_size=parameters[0:2];M1_size=parameters[2:4];
+    R2=parameters[4];R1=parameters[5];
+    p_m2=parameters[6];q_m2=parameters[7];
+    p_m1=parameters[8];q_m1=parameters[9];
+    M2_N=parameters[10:12];M1_N=parameters[12:14]
+    fimag_N=parameters[14:16];fimag_size=parameters[16:18]
 
-dx2,dy2,dx1,dy1=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1)
+    freq=electro_params[0]*10**9;
+    edge_taper=electro_params[1];
+    Angle_taper=electro_params[2]/180*np.pi;
+    Lambda=c/freq*1000;
+    k=2*np.pi/Lambda;
+    
+    return coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,edge_taper,Angle_taper,k
+    
+
+
 
 
 '''
@@ -40,7 +46,7 @@ def reshape_model(sizex,sizey,m,z,dy=1,Num=11):
     x0=np.linspace(-4.5*sizex+sizex/Num/2,4.5*sizex-sizex/Num/2,Num*9)
     y0=np.linspace(-4.5*sizey+sizey/Num/2,4.5*sizey-sizey/Num/2,Num*9)
     #m2
-    y0=y0+dy;
+    y0=y0+dy
     #m1
     #y0=y0;
     x,y=np.meshgrid(x0,y0)
@@ -61,7 +67,7 @@ def reshape_model(sizex,sizey,m,z,dy=1,Num=11):
 '''
 define a color map plot function;
 '''
-def colormap(x1,y1,z1,x2,y2,z2,Vmax=None,Vmin=None,savename='',suptitle=''):
+def colormap(x1,y1,z1,x2,y2,z2,Vmax=None,Vmin=None,suptitle=''):
     cmap = plt.get_cmap('hot');
     font = {'family': 'serif','color':'darkred','weight':'normal','size':16};
     fig,ax=plt.subplots(nrows=1,ncols=2,figsize=(14,6));
@@ -78,126 +84,127 @@ def colormap(x1,y1,z1,x2,y2,z2,Vmax=None,Vmin=None,savename='',suptitle=''):
     clb=fig.colorbar(p1, ax=ax2,shrink=0.95,fraction=.05);
     clb.set_label('um',labelpad=-40,y=1.05,rotation=0);
     fig.suptitle(suptitle,fontsize=15,color='k',verticalalignment='top')#'baseline')
-    plt.savefig('output/picture/'+savename+'.png')
-    plt.show();
-    
-'''
-define a 5 adjuster plots
-'''
-def ad_plots(err,name,scale=10):
-    fig,ax=plt.subplots(nrows=2,ncols=3,figsize=(12,12));
-    font = {'family': 'serif',
-            'color':'darkred',
-            'weight':'normal',
-            'size':16};
-    ax1=ax[0,0];
-    ax2=ax[0,1]
-    ax3=ax[0,2]
-    ax4=ax[1,0]
-    ax5=ax[1,1]
-    ax6=ax[1,2];
-    ax6.set_visible(False);
-    
-    err2=err[0:List_m2.shape[0]*5].reshape(5,-1);
-    err1=err[List_m2.shape[0]*5:].reshape(5,-1);
-    
-    ax1.plot(err2[0,...],'b*-',label='M2 adjuster 0');
-    ax1.plot(err1[0,...],'ro-',label='M1 adjuster 0');
-    ax1.set_ylim([-scale,scale])
-    ax1.set_ylabel('Fitting error/$\mu m$')
-    ax1.legend();
-    
-    ax2.plot(err2[1,...],'b*-',label='M2 adjuster 1');
-    ax2.plot(err1[1,...],'ro-',label='M1 adjuster 1');
-    ax2.set_ylim([-scale,scale])
-    ax2.legend();
-    
-    ax3.plot(err2[2,...],'b*-',label='M2 adjuster 2');
-    ax3.plot(err1[2,...],'ro-',label='M1 adjuster 2');
-    ax3.set_ylim([-scale,scale])
-    ax3.legend();
-    
-    ax4.plot(err2[3,...],'b*-',label='M2 adjuster 3');
-    ax4.plot(err1[3,...],'ro-',label='M1 adjuster 3');
-    ax4.set_ylim([-scale,scale])
-    ax4.set_ylabel('Fitting error/$\mu m$')
-    ax4.legend();
-    
-    ax5.plot(err2[4,...],'b*-',label='M2 adjuster 4');
-    ax5.plot(err1[4,...],'ro-',label='M1 adjuster 4');
-    ax5.set_ylim([-scale,scale])
-    ax5.legend();
-    
-    plt.savefig('output/picture/fitting_adjuster_errorplots'+name+'.png')
     plt.show()
-    
-    
 
 
 # In[19]:
-
-
 '''
-Define a function to plot error maps
-1. input panel error;
-2. fitting panel error;
-3. fitting accuracy;
-4. final error plots;
-5. error calculation;
+Draw the panel errors on M1 and M2
 '''
-def error_plots(file_input,file_fitting,name,inputrms=100,outputrms=10,scale=10):
-    # 1. get input panel error (reference):
-    ad0=np.genfromtxt(file_input)
-    ad_m2=ad0[0:5*List_m2.shape[0]];
-    ad_m1=ad0[5*List_m2.shape[0]:];
-    ''' reshape the error matrixes shape'''
-    M20=deformation(ad_m2.ravel(),List_m2,p_m2,q_m2,m2);
-    M10=deformation(ad_m1.ravel(),List_m1,p_m1,q_m1,m1);
-    x2,y2,dz2_0=reshape_model(M2_size[0],M2_size[1],m2,M20,dy=-1,Num=int(M2_N[0]));
-    x1,y1,dz1_0=reshape_model(M1_size[0],M1_size[1],m1,M10,dy=35,Num=int(M1_N[0]));
-    #2. panel error from holography fitting
-    ad1=np.genfromtxt(file_fitting)[0:5*int((List_m2.size+List_m1.size)/2)];
-    ad_m2=ad1[0:5*List_m2.shape[0]]
-    ad_m1=ad1[5*List_m2.shape[0]:5*(List_m2.shape[0]+List_m1.shape[0])];
+def Fit_M_Surface(Fit_S,vmax=100,vmin=-100,
+                  Ref_S=None,Ref_vmax=100,Ref_vmin=-100,
+                  diff_rms=10,model_file='CCAT_model'):
+    """
+    'Fit_S' is the solution of the fitted panel adjuster errors.
+    'Ref_S' is the values of the panel adjusters. If this parameter is 'None, only the fitted solution will be plotted.
+    """
+    '''
+    read input data file
+    '''
+    
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,edge_taper,Angle_taper,k=read_input(model_file)
+
+    M2_size=M2_size+1.2;
+    M1_size=M1_size+1.2;
+    M2_N=[13,13]
+    M1_N=[13,13]
+    '''
+    build model
+    '''
+    ad_m2=np.zeros(5*List_m2.shape[0]);
+    ad_m1=np.zeros(5*List_m1.shape[0]);
+    ad=np.append(ad_m2,ad_m1).ravel()
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                    coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M2_N[1],R1,
+                                                                    fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                    ad,p_m2,q_m2,p_m1,q_m1)
+
+    dx2,dy2,dx1,dy1=adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1)
+    #1. panel error from holography fitting
+    ad_m2=Fit_S[0:5*List_m2.shape[0]]
+    ad_m1=Fit_S[5*List_m2.shape[0]:5*(List_m2.shape[0]+List_m1.shape[0])]
     ''' reshape the error matrixes shape'''    
-    M20=deformation(ad_m2.ravel(),List_m2,p_m2,q_m2,m2);
-    M10=deformation(ad_m1.ravel(),List_m1,p_m1,q_m1,m1);
-    x2,y2,dz2_1=reshape_model(M2_size[0],M2_size[1],m2,M20,dy=-1,Num=int(M2_N[0]));
-    x1,y1,dz1_1=reshape_model(M1_size[0],M1_size[1],m1,M10,dy=35,Num=int(M1_N[0]));
-    
-    # 3. calculate the error;    
-    err2=(dz2_0-dz2_1)*1000;
-    err1=(dz1_0-dz1_1)*1000;
-    rms2=np.sqrt(np.nanmean(err2**2));
-    rms1=np.sqrt(np.nanmean(err1**2));
-    
+    M20=deformation(ad_m2.ravel(),List_m2,p_m2,q_m2,m2)
+    M10=deformation(ad_m1.ravel(),List_m1,p_m1,q_m1,m1)
+    x2,y2,dz2_1=reshape_model(M2_size[0],M2_size[1],m2,M20,dy=-1,Num=int(M2_N[0]))
+    x1,y1,dz1_1=reshape_model(M1_size[0],M1_size[1],m1,M10,dy=35,Num=int(M1_N[0]))
+
     '''
-    1. input panel error map;
+    1. Solutions, fitted panel errors.
     '''
-    colormap(x1,y1,dz1_0*1000,x2,y2,dz2_0*1000,Vmax=inputrms,Vmin=-inputrms,savename='Input_panel_error'+name,suptitle='Panel deformation map');
-    '''
-    2. fitting results of the panel error;
-    '''
-    colormap(x1,y1,dz1_1*1000,x2,y2,dz2_1*1000,Vmax=inputrms,Vmin=-inputrms,savename='fitting_panel_error'+name,suptitle='Fitting results');
+    colormap(x1,y1,dz1_1*1000,
+             x2,y2,dz2_1*1000,
+             Vmax=vmax,Vmin=vmin,
+             suptitle='Fitting Mirror Maps');
     
-    '''
-    3. fitting error
-    '''
-    colormap(x1,y1,err1,x2,y2,err2,Vmax=outputrms,Vmin=-outputrms,savename='fitting_error'+name,suptitle='Error distribution');
-    
-    '''
-    4. fitting adjuster error cut plots
-    '''
-    ad_plots((ad1-ad0).ravel()*1000,name,scale=scale);
-    
-    print(' M2 error:',rms2,'um\n','M1 error',rms1,'um');
-    
-    
-    
+    if Ref_S is None:
+        pass
+    else:
+        ad_m2=Ref_S[0:5*List_m2.shape[0]]
+        ad_m1=Ref_S[5*List_m2.shape[0]:]
+        ''' reshape the error matrixes shape'''
+        M20=deformation(ad_m2.ravel(),List_m2,p_m2,q_m2,m2)
+        M10=deformation(ad_m1.ravel(),List_m1,p_m1,q_m1,m1)
+        x2,y2,dz2_0=reshape_model(M2_size[0],M2_size[1],m2,M20,dy=-1,Num=int(M2_N[0]))
+        x1,y1,dz1_0=reshape_model(M1_size[0],M1_size[1],m1,M10,dy=35,Num=int(M1_N[0]))
+
+        '''
+        2. Reference panel errors.
+        '''
+        colormap(x1,y1,dz1_0*1000,
+                 x2,y2,dz2_0*1000,
+                 Vmax=Ref_vmax,Vmin=Ref_vmin,
+                 suptitle='Reference Mirror Maps')
+        
+         # 3. calculate the error;    
+        err2=(dz2_1-dz2_0)*1000
+        err1=(dz1_1-dz1_0)*1000
+        rms2=np.sqrt(np.nanmean(err2**2))
+        rms1=np.sqrt(np.nanmean(err1**2))
+
+        '''
+        2. Reference panel errors.
+        '''
+        colormap(x1,y1,err1,
+                 x2,y2,err2,
+                 Vmax=diff_rms,Vmin=-diff_rms,
+                 suptitle='Difference')
 
 
-# In[ ]:
+### plot the zernike results
+def Fit_M_Surface_zk(coeff_zk,Z_order,model_file='CCAT_model',vmax=100,vmin=-100):
+    coeff_zk=coeff_zk.reshape(2,-1)
+    coeff_m2=np.append(np.zeros(3),coeff_zk[0,:])
+    coeff_m1=np.append(np.zeros(3),coeff_zk[1,:])
 
+    coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,edge_taper,Angle_taper,k=read_input(model_file)
 
+    M2_size=M2_size+1.2;
+    M1_size=M1_size+1.2;
+    M2_N=[13,13]
+    M1_N=[13,13]
+    '''
+    build model
+    '''
+    ad_m2=np.zeros(5*List_m2.shape[0]);
+    ad_m1=np.zeros(5*List_m1.shape[0]);
+    ad=np.append(ad_m2,ad_m1).ravel()
+    m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA=model_ccat(coefficient_m2,List_m2,M2_size[0],M2_size[1],M2_N[0],M2_N[1],R2,
+                                                                    coefficient_m1,List_m1,M1_size[0],M1_size[1],M1_N[0],M2_N[1],R1,
+                                                                    fimag_size[0],fimag_size[1],fimag_N[0],fimag_N[1],
+                                                                    ad,p_m2,q_m2,p_m1,q_m1)
 
+    
+    #1. panel error from holography fitting
+    Z_surf2=make_zernike(Z_order,m2.x/R2,(m2.y+0.0)/R2,dtype='numpy')
+    Z_surf1=make_zernike(Z_order,m1.x/R1,(m1.y-0.0)/R1,dtype='numpy')
+    
+    z2=Z_surf2(coeff_m2)
+    z1=Z_surf1(coeff_m1)
+    x2,y2,dz2_1=reshape_model(M2_size[0],M2_size[1],m2,z2,dy=-1,Num=int(M2_N[0]))
+    x1,y1,dz1_1=reshape_model(M1_size[0],M1_size[1],m1,z1,dy=35,Num=int(M1_N[0]))
 
+    colormap(x1,y1,dz1_1*1000,
+             x2,y2,dz2_1*1000,
+             Vmax=vmax,Vmin=vmin,
+             suptitle='Fitting Mirror Maps');

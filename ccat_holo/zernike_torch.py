@@ -56,16 +56,16 @@ def mkCFn(N_order,x,y,dtype='numpy',device=T.device('cpu')):
             zz=np.append(zz,ev(n,m,x,y));
     N_vector=N(N_order);
     zz=zz.reshape(N_vector,-1);
+    #print(zz.shape)
     if dtype.lower()=='numpy':
         pass;
     elif dtype.lower()=='torch':
         zz=T.tensor(zz,dtype=T.float64).to(device);
     else:
         print('wrong dtype input!')
-    
-    
+
     def error(coeffs): 
-        return (coeffs.reshape(N_vector,1)*zz).sum(0);
+        return (coeffs.reshape(N_vector,-1)*zz).sum(0);
     error.parnames=["z%i"%i for i in range(zz.shape[0])]
     return error;
         

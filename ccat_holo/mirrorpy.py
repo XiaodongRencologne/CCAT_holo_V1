@@ -108,14 +108,14 @@ def ImagPlane(Rangex,Rangey,Nx,Ny):
 '''
 # 4 combine the panel function and surface function, and a special funtion for the two-mirror system;
 '''
-'''
-def model_ccat(coefficient_m2,List_m2,M2_sizex,M2_sizey,M2_Nx,M2_Ny,   # m2
-          coefficient_m1,List_m1,M1_sizex,M1_sizey,M1_Nx,M1_Ny,R, # m1
+
+def model_ccat(coefficient_m2,List_m2,M2_sizex,M2_sizey,M2_Nx,M2_Ny,R2,   # m2
+          coefficient_m1,List_m1,M1_sizex,M1_sizey,M1_Nx,M1_Ny,R1, # m1
           Rangex,Rangey,fimag_Nx,fimag_Ny,# imaginary field
           S_init,p_m2,q_m2,p_m1,q_m1):              #fimag & initial position of adjusters;
     
-    surface_m2=profile(coefficient_m2,R);# define the surface function of m2;
-    surface_m1=profile(coefficient_m1,R);# define the surface function of m1;    
+    surface_m2=profile(coefficient_m2,R2);# define the surface function of m2;
+    surface_m1=profile(coefficient_m1,R1);# define the surface function of m1;    
     m2,m2_n,m2_dA=squarepanel(List_m2[...,0],List_m2[...,1],M2_sizex,M2_sizey,M2_Nx,M2_Ny,surface_m2);
     m1,m1_n,m1_dA=squarepanel(List_m1[...,0],List_m1[...,1],M1_sizex,M1_sizey,M1_Nx,M1_Ny,surface_m1);
     fimag,fimag_n,fimag_dA=ImagPlane(Rangex,Rangey,fimag_Nx,fimag_Ny);
@@ -126,15 +126,15 @@ def model_ccat(coefficient_m2,List_m2,M2_sizex,M2_sizey,M2_Nx,M2_Ny,   # m2
     S_m2=S_init[0:Panel_N_m2*5];
     S_m1=S_init[Panel_N_m2*5:];
     
-    m2_dz=deformation(S_m2,List_m2,p,q,m2);
-    m1_dz=deformation(S_m1,List_m1,p,q,m1);
+    m2_dz=deformation(S_m2,List_m2,p_m2,q_m2,m2);
+    m1_dz=deformation(S_m1,List_m1,p_m1,q_m1,m1);
     
     m2.z=m2.z+m2_dz;
     m1.z=m1.z-m1_dz;
     
     return m2,m2_n,m2_dA,m1,m1_n,m1_dA,fimag,fimag_n,fimag_dA;        
             
-'''
+
 '''
 # 5 put regular error into the panel
 '''
