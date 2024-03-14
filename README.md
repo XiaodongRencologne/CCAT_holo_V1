@@ -25,6 +25,10 @@ When you have all required packages, you can clone or download the 'ccat_holo' r
 git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 ```
 
+```shell
+git clone https://git.ph1.uni-koeln.de/ccat_prime/holography.git
+```
+
 ## Usage
 
 The details of the software are explained in the [Documentation_ccatholo](Documentation_ccatholo.md), which includes the presentation of the FYST geometry model and the data analysis procedure. 
