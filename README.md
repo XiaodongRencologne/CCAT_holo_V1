@@ -27,7 +27,7 @@ git clone https://github.com/XiaodongRencologne/CCAT_holo_V1.git
 
 ## Usage
 
-The details of the software are explained in the [Documentation_ccatholo](Documentation_ccatholo), which includes the presentation of the FYST geometry model and the data analysis procedure. 
+The details of the software are explained in the [Documentation_ccatholo](Documentation_ccatholo.md), which includes the presentation of the FYST geometry model and the data analysis procedure. 
 
 The examples of using the software for the FYST analysis is the folder 'examples' including:
 
