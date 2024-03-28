@@ -464,6 +464,9 @@ class CCAT_holo():
             plt.show()
             # Fields on M1
             """
+            triang = tri.Triangulation(self.M1_0.x, self.M1_0.y)
+            interpolator = tri.LinearTriInterpolator(triang,F_M1)
+
             fig, axs = plt.subplots(1, 2, figsize=(12, 5))
             cmap='jet'
             p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
