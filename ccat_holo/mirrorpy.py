@@ -91,9 +91,13 @@ def ImagPlane(Rangex,Rangey,Nx,Ny):
     dy=Rangey/(Ny-1);
     dA=dx*dy;
     
-    P=np.moveaxis(np.mgrid[-Rangex/2:Rangex/2:Nx*1j,-Rangey/2:Rangey/2:Ny*1j],0,-1);
+    #P=np.moveaxis(np.mgrid[-Rangex/2:Rangex/2:Nx*1j,-Rangey/2:Rangey/2:Ny*1j],0,-1);
+    x=np.linspace(-Rangex/2,Rangex/2,int(Nx))
+    y=np.linspace(-Rangey/2,Rangey/2,int(Ny))
+    P=np.reshape(np.moveaxis(np.meshgrid(x,y),0,-1),(-1,2));
     # fimag.x fimag.y fimag.z;
-    fimag.x=P[...,1].ravel();fimag.y=P[...,0].ravel();
+    fimag.x=P[...,0].ravel();
+    fimag.y=P[...,1].ravel();
     fimag.z=np.zeros(fimag.x.shape);
     
     # normal vector

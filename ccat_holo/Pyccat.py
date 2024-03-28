@@ -8,6 +8,7 @@ import h5py
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import matplotlib.tri as tri
 import pyvista as pv
 pv.set_jupyter_backend('trame')#('static')#
 
@@ -422,7 +423,8 @@ class CCAT_holo():
               f.create_dataset('F_beam_imag',data=self.Field_s.imag)
               f.create_dataset('aperture',data=self.aperture_xy)
               f.create_dataset('scan_pattern',data=np.concatenate((source.x,
-                                                                   source.y,source.z)).reshape(3,-1))
+                                                                   source.y,
+                                                                   source.z)).reshape(3,-1))
 
     def plot_beam(self,filename=None):
         '''plot the lastest calculated beam'''
@@ -436,6 +438,9 @@ class CCAT_holo():
         else:
             with h5py.File(filename,'r') as f:
                 beam=f['F_beam_real'][:]+1j*f['F_beam_imag'][:]
+                F_M1=f['F_m1_real'][:]+1j*f['F_m1_imag'][:]
+                F_IF=f['F_if_real'][:]+1j*f['F_if_imag'][:]
+                F_M2=f['F_m2_real'][:]+1j*f['F_m2_imag'][:]
                 NN=int(np.sqrt(f['scan_pattern'][0,:].size))
                 x=f['scan_pattern'][0,:].reshape(NN,-1)
                 y=f['scan_pattern'][1,:].reshape(NN,-1)
@@ -448,15 +453,52 @@ class CCAT_holo():
             axs[1].axis('equal')
             plt.show()
 
-            fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+            # cut plot 
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
             cmap='jet'
-            p1=axs[0].plot(x[50,:],20*np.log10(np.abs(beam[50,:])))
-            p2=axs[1].plot(x[50,:],np.angle(beam[50,:])*180/np.pi,'*-')
+            NN0=np.where(np.abs(beam)==np.abs(beam).max())
+            print(NN0[0],NN0[1],20*np.log10(np.abs(beam).max()))
+            p1=axs[0].plot(x[NN0[0][0],:],20*np.log10(np.abs(beam[NN0[0][0],:])))
+            p2=axs[1].plot(y[:,NN0[1][0]],20*np.log10(np.abs(beam[:,NN0[1][0]])))
+            plt.grid(axis='both')
             plt.show()
+            # Fields on M1
+            """
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            cmap='jet'
+            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+            axs[0].axis('equal')
+            p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
+            axs[1].axis('equal')
+            plt.show()
+            """
+            # Field on IF
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            cmap='jet'
+            x=self.fimag.x.reshape(int(self.fimag_N[1]),int(self.fimag_N[0]))
+            y=self.fimag.y.reshape(int(self.fimag_N[1]),int(self.fimag_N[0]))
+            F_IF=F_IF.reshape(int(self.fimag_N[1]),int(self.fimag_N[0]))
+            p1=axs[0].pcolor(x[0,:],y[:,0],20*np.log10(np.abs(F_IF)),cmap='jet')
+            axs[0].axis('equal')
+            p2=axs[1].pcolor(x,y,np.angle(F_IF)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
+            axs[1].axis('equal')
+            plt.show()
+            # Field on M2
+            """
+            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            cmap='jet'
+            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+            axs[0].axis('equal')
+            p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
+            axs[1].axis('equal')
+            plt.show()
+            """
             #print(beam.real)
             #print(beam.imag)
 
-    def First_Beam_cal(self,S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,Matrix=True):
+    def First_Beam_cal(self,S2_init=np.zeros((5,69)),
+                       S1_init=np.zeros((5,77)),
+                       Error_m2=0,Error_m1=0,Matrix=True):
         '''Set the holographic design and make the first beam calculations'''
         if self.holo_conf==None:
             print('set up the holographic configuration, e.g. Rx positions & the related scanning tracjectory!')
