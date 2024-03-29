@@ -14,6 +14,6 @@ Nx_M1,30
 Ny_M1,30
 fimag_Nx,301
 fimag_Ny,301
-fimag_sizex,2040
-fimag_sizey,2040
+fimag_sizex,1040
+fimag_sizey,1040
 

@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-
-
 import numpy as np;
 import matplotlib.pyplot as plt;
-
-
-
 
 
 '''1. square pattern'''
@@ -26,7 +20,7 @@ def squarePattern(u0,v0,urange,vrange,Nu,Nv,file='',distance='far',Type='on-axis
             y=distance*y;
             z=distance*z;
         grid=np.concatenate((x,y,z)).reshape(3,-1).T;
-        np.savetxt(file+'/on-axis.txt',grid,delimiter=',');
+        np.savetxt(file+'on-axis.txt',grid,delimiter=',');
         return 0;
     else:
         grid=np.moveaxis(np.meshgrid(np.linspace(-urange/2,urange/2,Nu),np.linspace(-vrange/2,vrange/2,Nv)),0,-1);
@@ -52,22 +46,22 @@ def squarePattern(u0,v0,urange,vrange,Nu,Nv,file='',distance='far',Type='on-axis
         znn=np.sqrt(1-xnn**2-ynn**2);
         if distance=='far':
             grid=np.concatenate((xpp,ypp,zpp)).reshape(3,-1).T;
-            np.savetxt(file+'/pos_pos_far.txt',grid);
+            np.savetxt(file+'pos_pos_far.txt',grid,delimiter=',');
             grid=np.concatenate((xpn,ypn,zpn)).reshape(3,-1).T;
-            np.savetxt(file+'/pos_neg_far.txt',grid);
+            np.savetxt(file+'pos_neg_far.txt',grid,delimiter=',');
             grid=np.concatenate((xnp,ynp,znp)).reshape(3,-1).T;
-            np.savetxt(file+'/neg_pos_far.txt',grid);
+            np.savetxt(file+'neg_pos_far.txt',grid,delimiter=',');
             grid=np.concatenate((xnn,ynn,znn)).reshape(3,-1).T;
-            np.savetxt(file+'/neg_neg_far.txt',grid);
+            np.savetxt(file+'neg_neg_far.txt',grid,delimiter=',');
         else:
             grid=(np.concatenate((xpp,ypp,zpp)).reshape(3,-1).T)*distance;
-            np.savetxt(file+'/pos_pos_near.txt',grid);
+            np.savetxt(file+'pos_pos_near.txt',grid,delimiter=',');
             grid=np.concatenate((xpn,ypn,zpn)).reshape(3,-1).T*distance;
-            np.savetxt(file+'/pos_neg_near.txt',grid);
+            np.savetxt(file+'pos_neg_near.txt',grid,delimiter=',');
             grid=np.concatenate((xnp,ynp,znp)).reshape(3,-1).T*distance;
-            np.savetxt(file+'/neg_pos_near.txt',grid);
+            np.savetxt(file+'neg_pos_near.txt',grid,delimiter=',');
             grid=np.concatenate((xnn,ynn,znn)).reshape(3,-1).T*distance;
-            np.savetxt(file+'/neg_neg_near.txt',grid);
+            np.savetxt(file+'neg_neg_near.txt',grid,delimiter=',');
         return 1
 
   
