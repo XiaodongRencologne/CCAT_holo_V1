@@ -436,6 +436,7 @@ class CCAT_holo():
             print('No input data!!!')
             pass
         else:
+            print('Beam Rx: '+filename)
             with h5py.File(filename,'r') as f:
                 beam=f['F_beam_real'][:]+1j*f['F_beam_imag'][:]
                 F_M1=f['F_m1_real'][:]+1j*f['F_m1_imag'][:]
@@ -463,18 +464,24 @@ class CCAT_holo():
             plt.grid(axis='both')
             plt.show()
             # Fields on M1
-            """
-            triang = tri.Triangulation(self.M1_0.x, self.M1_0.y)
-            interpolator = tri.LinearTriInterpolator(triang,F_M1)
-
-            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            fig, axs = plt.subplots(1, 1, figsize=(12, 5))
             cmap='jet'
-            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
-            axs[0].axis('equal')
-            p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
-            axs[1].axis('equal')
+            M1_panelN=int(self.Panel_center_M1.size/2)
+            Nx=self.M1_N[0]
+            Ny=self.M1_N[1]
+            N=Nx*Ny
+            vmax=20*np.log10(np.abs(F_M1).max())
+            vmin=vmax-20
+            for n in range(M1_panelN):
+                x=self.m1_0.x[n*N:(n+1)*N].reshape(Ny,Nx)
+                y=self.m1_0.y[n*N:(n+1)*N].reshape(Ny,Nx)
+                p1=axs.pcolor(x,y,
+                                 20*np.log10(np.abs(F_M1[n*N:(n+1)*N].reshape(Ny,Nx))),
+                                 cmap=cmap,vmin=vmin,vmax=vmax)
+            axs.axis('equal')
+            #axs[1].axis('equal')
             plt.show()
-            """
+
             # Field on IF
             fig, axs = plt.subplots(1, 2, figsize=(12, 5))
             cmap='jet'
@@ -487,17 +494,27 @@ class CCAT_holo():
             axs[1].axis('equal')
             plt.show()
             # Field on M2
-            """
             fig, axs = plt.subplots(1, 2, figsize=(12, 5))
             cmap='jet'
-            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+            M2_panelN=int(self.Panel_center_M2.size/2)
+            Nx=self.M2_N[0]
+            Ny=self.M2_N[1]
+            N=Nx*Ny
+            vmax=20*np.log10(np.abs(F_M2).max())
+            vmin=vmax-15
+            for n in range(M2_panelN):
+                x=self.m2_0.x[n*N:(n+1)*N].reshape(Ny,Nx)
+                y=self.m2_0.y[n*N:(n+1)*N].reshape(Ny,Nx)
+                p1=axs[0].pcolor(x,y,
+                                 20*np.log10(np.abs(F_M2[n*N:(n+1)*N].reshape(Ny,Nx))),
+                                 cmap=cmap,vmin=vmin,vmax=vmax)
+                p2=axs[1].pcolor(x,y,
+                                 np.angle(F_M2[n*N:(n+1)*N].reshape(Ny,Nx))*180/np.pi,
+                                 cmap=cmap,vmin=-180,vmax=180)
             axs[0].axis('equal')
-            p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
             axs[1].axis('equal')
             plt.show()
-            """
-            #print(beam.real)
-            #print(beam.imag)
+
 
     def First_Beam_cal(self,S2_init=np.zeros((5,69)),
                        S1_init=np.zeros((5,77)),
