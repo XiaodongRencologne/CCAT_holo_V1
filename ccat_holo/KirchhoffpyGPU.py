@@ -39,74 +39,7 @@ class Complex():
         else:
             pass;
 '''1. Define Kirchhoff-Fresnel Integration Solver.'''
-#def KirchhoffSolver(Source, Tar_element, Type='real', Field_type='far'):
-def PO_scalar_0(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**keywards):
-    '''
-    Formulatar of the Kirchhoff-Fresnel Integration method
-    *******Field=Sum{field()*exp(-j*k*r)/R*[cos_i+cos_r] J*dx*dy}*************
-    **************************************************************************
-    m1: reflector of source field;
-    m2: target reflector;
-    Field_in: Field on 'm1';
-    cos_i: cosin of reflection angle on m1, in the following document 
-    cos_r is cosin of the output ray from the point on 'm1' to target point on 'm2' ;
-    Keepmatrix means if the intermediate computing results are saved as a 2D matrix used for speeding up
-    calculations.'
-    Device: 'cpu' means the computation is done by cpu. 'cuda' can load the data into
-    GPU RAM and computed by GPU for acceleration.
-    '''
-    N=m2.x.size
-    cos_i_size=cos_i.size
-    m1.np2Tensor(Device)
-    m1_n.np2Tensor(Device)
-    m2.np2Tensor(Device)
-    cos_i=T.tensor(cos_i,dtype=T.float64).to(T.device(Device))
-    cos_i = cos_i.to(Device)
-    k=T.tensor(k).to(Device)
-    ds=T.tensor(ds).to(Device)
-    #=T.tensor(Field_m1,dtype=T.complex128).to(Device)
-    F_m1=T.tensor(Field_m1.real,dtype=T.float64)+1j*T.tensor(Field_m1.imag,dtype=T.float64)
-    F_m1=F_m1.to(Device)
-    if Device=='cuda':
-        print('The computation is speed up by GPU units!')            
-    # Define output field:
-    Field_m2=Complex()
-    Field_m2.real=T.zeros(N,dtype=T.float64)
-    Field_m2.imag=T.zeros(N,dtype=T.float64)
-    Field_m2.np2Tensor(Device)
-    for i in range(N):
-        x=m2.x[i]-m1.x.reshape(1,-1)
-        y=m2.y[i]-m1.y.reshape(1,-1)
-        z=m2.z[i]-m1.z.reshape(1,-1)
-        #cosin terms
-        if cos_i_size==1:
-            cos=1
-            x=T.sqrt(x**2+y**2+z**2)
-        else:
-            cos=T.abs(x*m1_n.x.reshape(1,-1)
-                        +y*m1_n.y.reshape(1,-1)
-                        +z*m1_n.z.reshape(1,-1))
-            x=T.sqrt(x**2+y**2+z**2)
-            cos=(cos/x+T.abs(cos_i))/2
-            
-        del(y,z)
-        # field calculation    
-        Amp=1/x*m1_n.N*ds/2/T.pi*k*cos #
-        Mat0=Amp*T.exp(-1j*k*x)
-        F_m2=T.sum(Mat0*F_m1.reshape(1,-1),axis=-1)
-        Field_m2.real[i]=F_m2.real
-        Field_m2.imag[i]=F_m2.imag
-    m1.Tensor2np()
-    m1_n.Tensor2np()
-    m2.Tensor2np()
-    Field_m2.Tensor2np()
-    return 1,Field_m2,1
-
-
-
-
-
-def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**keywards):
+def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cuda',**keywards):
     '''
     Formulatar of the Kirchhoff-Fresnel Integration method
     *******Field=Sum{field()*exp(-j*k*r)/R*[cos_i+cos_r] J*dx*dy}*************
@@ -145,23 +78,20 @@ def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**key
         x=x.reshape(-1,1)-m1.x.reshape(1,-1)
         y=y.reshape(-1,1)-m1.y.reshape(1,-1)
         z=z.reshape(-1,1)-m1.z.reshape(1,-1)
-
+        r=T.sqrt(x**2+y**2+z**2)
         #cosin terms
         if cos_i_size==1:
-            cos=1
-            x=T.sqrt(x**2+y**2+z**2)
+            cos=1/r
         else:
             cos=T.abs(x*m1_n.x.reshape(1,-1)
-                        +y*m1_n.y.reshape(1,-1)
-                        +z*m1_n.z.reshape(1,-1))
-            x=T.sqrt(x**2+y**2+z**2)
-            cos=(cos/x+T.abs(cos_i))/2
-            
-        del(y,z)
-        # field calculation    
-        Amp=1/x*m1_n.N*ds/2/T.pi*T.abs(k)*cos #
-        Mat0=Amp*T.exp(-1j*k*x)
-        F_m2=T.sum(Mat0*F_m1.reshape(1,-1),axis=-1)
+                +y*m1_n.y.reshape(1,-1)
+                +z*m1_n.z.reshape(1,-1))
+            cos=(cos/r+T.abs(cos_i))/2/r 
+        del(x,y,z)
+        # field calculation 
+        Amp=m1_n.N*ds/2/T.pi*T.abs(k)*cos #
+        Mat0=Amp*T.exp(-1j*k*r)
+        F_m2=T.sum(Mat0*F_m1.reshape(1,-1),axis=-1)  
         return F_m2
     if Device=='cuda':
         M_all=T.cuda.get_device_properties(0).total_memory
@@ -169,22 +99,23 @@ def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**key
         cores=int(M_all/M_element/15)
         print('cores:',cores)
     else:
-        cores=os.cpu_count()
-    
-    for i in range(int(N/cores)):
-        #print(m2.x[i*cores:(i+1)*cores])
+        cores=os.cpu_count()*20
+
+    N=m2.x.nelement()
+    Ni=int(N/cores)
+    for i in range(Ni):
         F=calcu(m2.x[i*cores:(i+1)*cores],m2.y[i*cores:(i+1)*cores],m2.z[i*cores:(i+1)*cores])
         Field_m2.real[i*cores:(i+1)*cores]=F.real
         Field_m2.imag[i*cores:(i+1)*cores]=F.imag
-    Ni=int(N/cores)
-    F=calcu(m2.x[(Ni+1)*cores:],m2.y[(Ni+1)*cores:],m2.z[(Ni+1)*cores:])
-    Field_m2.real[(Ni+1)*cores:]=F.real
-    Field_m2.imag[(Ni+1)*cores:]=F.imag
+    
+    if int(N%cores)!=0:
+        F=calcu(m2.x[Ni*cores:],m2.y[Ni*cores:],m2.z[Ni*cores:])
+        Field_m2.real[Ni*cores:]=F.real
+        Field_m2.imag[Ni*cores:]=F.imag
 
     m1.Tensor2np()
     m1_n.Tensor2np()
     m2.Tensor2np()
-    #print(m2.x)
     Field_m2.Tensor2np()
     T.cuda.empty_cache()
     return 1,Field_m2,1

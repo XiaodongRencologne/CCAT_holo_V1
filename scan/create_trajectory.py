@@ -7,9 +7,9 @@ u0=0.027
 v0=0.027
 urange=0.01
 vrange=0.01
-Nu=501
-Nv=501
-forder='501/'
+Nu=2
+Nv=2
+forder='test/'
 if not os.path.exists(forder):
     os.makedirs(forder)
 print(os.path.exists(forder))

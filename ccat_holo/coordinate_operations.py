@@ -27,19 +27,19 @@ class Coord:
     def np2Tensor(self,DEVICE):
         '''DEVICE=T.device('cpu') or T.device('cude:0')'''
         if type(self.x).__module__ == np.__name__:
-            self.x=T.tensor(self.x).to(DEVICE).clone()
+            self.x=T.tensor(self.x,dtype=T.float64).to(DEVICE).clone()
         elif type(self.x).__module__==T.__name__:
             self.x=self.x.to(DEVICE);            
         if type(self.y).__module__ == np.__name__:
-            self.y=T.tensor(self.y).to(DEVICE).clone()
+            self.y=T.tensor(self.y,dtype=T.float64).to(DEVICE).clone()
         elif type(self.y).__module__==T.__name__:
             self.y=self.y.to(DEVICE)
         if type(self.z).__module__ == np.__name__:
-            self.z=T.tensor(self.z).to(DEVICE).clone()
+            self.z=T.tensor(self.z,dtype=T.float64).to(DEVICE).clone()
         elif type(self.z).__module__==T.__name__:
             self.z=self.z.to(DEVICE)
         if type(self.N).__module__ == np.__name__:
-            self.N=T.tensor(self.N).to(DEVICE).clone()
+            self.N=T.tensor(self.N,dtype=T.float64).to(DEVICE).clone()
         elif type(self.N).__module__==T.__name__:
             self.N=self.N.to(DEVICE)
         else:

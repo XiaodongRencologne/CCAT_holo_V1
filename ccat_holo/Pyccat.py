@@ -336,14 +336,16 @@ class CCAT_holo():
         Field_m2=Complex()
 
         # 2. illumination field on M2
+        print('step 1:\n')
         Field_m2.real,Field_m2.imag,cosm2_i=Feed_beam(self.edge_taper,
                                                       self.Angle_taper,
                                                       self.k,
                                                       m2,m2_n,
                                                       self.angle_f,self.D_f
                                                       )
-
+        
         # 3. calculate field on IF plane
+        print('step 2:\n')
         fimag=local2global(self.angle_fimag,self.D_fimag,self.fimag)
         fimag_n=local2global(self.angle_fimag,[0,0,0],self.fimag_n)
         Matrix1,self.Field_fimag,cosm2_r=PO_scalar(m2,m2_n,
@@ -368,6 +370,7 @@ class CCAT_holo():
         cosm1_i=(x*m1_n.x+y*m1_n.y+z*m1_n.z)/r
         #cosm1_i=T.tensor(cosm1_i).to(DEVICE);
         del(x,y,z,r)
+        print('step 3:\n')
         Matrix2,Field_m1,cosm=PO_scalar(fimag,fimag_n,self.fimag_dA,
                                         m1,np.array([1]),
                                         self.Field_fimag,
@@ -389,6 +392,7 @@ class CCAT_holo():
         
         #5. calculate the field in the source range;
         source=local2global(self.angle_s,self.D_s,scan_pattern)
+        print('step 4:\n')
         Matrix3,self.Field_s,cosm1_r=PO_scalar(m1,m1_n,self.m1_dA,
                                           source,cosm1_i,
                                           Field_m1,
