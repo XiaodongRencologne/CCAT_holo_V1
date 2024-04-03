@@ -44,11 +44,11 @@ class Complex():
     def np2Tensor(self,DEVICE=T.device('cpu')):
         '''DEVICE=T.device('cpu') or T.device('cude:0')'''
         if type(self.real).__module__ == np.__name__:
-            self.real=T.tensor(self.real).to(DEVICE).clone();
+            self.real=T.tensor(self.real,dtype=T.float64).to(DEVICE).clone();
         elif type(self.real).__module__==T.__name__:
             self.real=self.real.to(DEVICE);            
         if type(self.imag).__module__ == np.__name__:
-            self.imag=T.tensor(self.imag).to(DEVICE).clone();
+            self.imag=T.tensor(self.imag,dtype=T.float64).to(DEVICE).clone();
         elif type(self.imag).__module__==T.__name__:
             self.imag=self.imag.to(DEVICE);
         else:

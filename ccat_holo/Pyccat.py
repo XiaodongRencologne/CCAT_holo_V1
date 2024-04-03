@@ -24,7 +24,8 @@ from coordinate_operations import Transform_local2global as local2global
 # are expressed by Coord.x, Coord.y, Coord.z
 # other functions are known from theirs names used for transformations between coordinate
 # systems by giving their origin point displacement and rotation angles.
-from Kirchhoff import Complex, PO_scalar
+from Kirchhoff import Complex#, PO_scalar
+from KirchhoffpyGPU import PO_scalar
 # PO_scalar is the field solver. Compex is used to express complex fields on mirror surfaces
 # and desired field region.
 from Feedpy import Gaussibeam
@@ -367,7 +368,6 @@ class CCAT_holo():
         cosm1_i=(x*m1_n.x+y*m1_n.y+z*m1_n.z)/r
         #cosm1_i=T.tensor(cosm1_i).to(DEVICE);
         del(x,y,z,r)
-
         Matrix2,Field_m1,cosm=PO_scalar(fimag,fimag_n,self.fimag_dA,
                                         m1,np.array([1]),
                                         self.Field_fimag,
