@@ -39,7 +39,7 @@ class Complex():
         else:
             pass;
 '''1. Define Kirchhoff-Fresnel Integration Solver.'''
-def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cuda',**keywards):
+def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**keywards):
     '''
     Formulatar of the Kirchhoff-Fresnel Integration method
     *******Field=Sum{field()*exp(-j*k*r)/R*[cos_i+cos_r] J*dx*dy}*************
