@@ -100,6 +100,7 @@ def PO_scalar(m1,m1_n,ds,m2,cos_i,Field_m1,k,Keepmatrix=False,Device='cpu',**key
         print('cores:',cores)
     else:
         cores=os.cpu_count()*20
+        print('cores:',cores)
 
     N=m2.x.nelement()
     Ni=int(N/cores)
