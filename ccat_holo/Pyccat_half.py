@@ -103,9 +103,12 @@ class CCAT_holo_half():
 
         # panel size, center, and number of sampling points on each panel
         self.Panel_center_M2=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',')
-        self.Panel_center_M2_CF=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',')
         self.Panel_center_M1=np.genfromtxt(Model_folder+'/L_m1.txt',delimiter=',')
-        self.Panel_center_M1_CF=np.genfromtxt(Model_folder+'/L_m1.txt',delimiter=',')
+
+        # get carbon fibon plate by giving the center position and four corners locations.
+        self.M2_CF_5points=np.genfromtxt(Model_folder+'/CF_m2.txt',delimiter=',')
+        self.M1_CF_5points=np.genfromtxt(Model_folder+'CF_m1.txt',delimiter=',')
+        
         parameters=np.genfromtxt(Model_folder+'/Model.txt',delimiter=',')[:,1]
 
         self.M2_size=parameters[0:2]
