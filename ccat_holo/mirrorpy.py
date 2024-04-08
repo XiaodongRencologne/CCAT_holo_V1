@@ -75,11 +75,37 @@ def squarepanel(centerx,centery,sizex,sizey,Nx,Ny,surface,quadrature='uniform'):
         M.z,Mn=surface(M.x,M.y);
         dA=sizex*sizey/Nx/Ny;
     elif quadrature.lower()=='gaussian':
-        
-        print(1);
-    
-        
+        print(1);   
     return M,Mn,dA;
+
+# define the panel     
+def parallelogram_panel(Ox,Oy,v1,v2,N1,N2,surface,quadrature='uniform'):
+    Ox=np.array(Ox)
+    Oy=np.array(Oy)
+    v1=np.array(v1)
+    v2=np.array(v2)
+    N1=np.array(N1)
+    N2=np.array(N2)
+    sizea=np.sqrt(np.sum(v1**2))
+    sizeb=np.sqrt(np.sum(v2**2))
+    if quadrature.lower()=='uniform':
+        a=np.linspace(0+1/N1/2,1-1/N1/2,N1)
+        b=np.linspace(0+1/N2/2,1-1/N2/2,N2)
+        abarray=np.reshape(np.moveaxis(np.meshgrid(a,b),0,-1),(-1,2))
+        a=abarray[...,0]
+        b=abarray[...,1]
+        x=a*v1[0]+b*v2[0]
+        y=a*v1[1]+b*v2[1]
+        dA=1/(N1*N2)*np.abs(v1[0]*v2[1]-v1[1]*v2[0])
+
+        M=Coord()
+        M.x=(Ox.reshape(-1,1)+x).ravel()
+        M.y=(Oy.reshape(-1,1)+y).ravel()
+        # surface can get the z value of the mirror and also can get the normal 
+        M.z,Mn=surface(M.x,M.y)
+    elif quadrature.lower()=='gaussian':
+        print(1);   
+    return M,Mn,dA
 
 '''
 # 3 define the inaginary field size, we also can use the above function to do that.
