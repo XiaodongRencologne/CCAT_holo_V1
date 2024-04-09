@@ -16,4 +16,15 @@ fimag_Nx,301
 fimag_Ny,301
 fimag_sizex,1040
 fimag_sizey,1040
+CF2_dz,0
+CF1_dz,0
+Nx_CF2,300
+Ny_CF2,300
+Nx_CF1,300
+Ny_CF1,300
+IF2_Nx,301
+IF2_Ny,301
+IF2_sizex,500
+IF2_sizey,500
+
 

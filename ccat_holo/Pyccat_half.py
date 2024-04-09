@@ -66,37 +66,123 @@ class CCAT_holo_half(CCAT_holo):
         # get carbon fibon plate by giving the center position and four corners locations.
         self.M2_CF_4points=np.genfromtxt(Model_folder+'/CF_m2.txt',delimiter=',')
         self.M1_CF_4points=np.genfromtxt(Model_folder+'/CF_m1.txt',delimiter=',')
-        Ox1=self.M1_CF_4points[0,0]
-        Oy1=self.M1_CF_4points[0,1]
+        self.Ox1=self.M1_CF_4points[0,0]
+        self.Oy1=self.M1_CF_4points[0,1]
 
-        Ox2=self.M2_CF_4points[0,0]
-        Oy2=self.M2_CF_4points[0,1]
+        self.Ox2=self.M2_CF_4points[0,0]
+        self.Oy2=self.M2_CF_4points[0,1]
 
-        v11=self.M1_CF_4points[1,:]-self.M1_CF_4points[0,:]
-        v12=self.M1_CF_4points[3,:]-self.M1_CF_4points[0,:]
+        v1a=self.M1_CF_4points[1,:]-self.M1_CF_4points[0,:]
+        v1b=self.M1_CF_4points[3,:]-self.M1_CF_4points[0,:]
 
-        v21=self.M2_CF_4points[1,:]-self.M2_CF_4points[0,:]
-        v22=self.M2_CF_4points[3,:]-self.M2_CF_4points[0,:]
+        v2a=self.M2_CF_4points[1,:]-self.M2_CF_4points[0,:]
+        v2b=self.M2_CF_4points[3,:]-self.M2_CF_4points[0,:]
 
+        parameters=np.genfromtxt(Model_folder+'/Model.txt',delimiter=',')[:,1]
+
+        self.CF2_N=parameters[20:22].astype(int)
+        self.CF1_N=parameters[22:24].astype(int)
+        self.CF2_dz=parameters[18]
+        self.CF1_dz=parameters[19]
+        
+        self.fimag2_N=parameters[24:26]
+        self.fimag2_size=parameters[26:]
         '''surface'''
         # define surface profile of M1 and M2 in their local coordinates
         CF2_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m2CF.txt',delimiter=',')
         CF1_poly_coeff=np.genfromtxt(Model_folder+'/coeffi_m1CF.txt',delimiter=',')
+        CF2_poly_coeff[0,0]=self.CF2_dz
+        CF1_poly_coeff[0,0]=self.CF1_dz
         # the 2D polynomial surface  
         self.surface_m2_CF=profile(CF2_poly_coeff,1)
         self.surface_m1_CF=profile(CF1_poly_coeff,1)
-        """
-        self.m2_CF,self.m2_CF_n,self.m2_CF_dA=parallelogram_panel(Ox1,Oy1,
-                                                                  v11,v12,
-                                                                  N11,N12,
+
+        self.m2_CF,self.m2_CF_n,self.m2_CF_dA=parallelogram_panel(self.Ox1,self.Oy1,
+                                                                  self.v2a,self.v2b,
+                                                                  self.CF2_N[0], self.CF2_N[1],
                                                                   self.surface_m2_CF,
                                                                   quadrature='uniform')
-        self.m1_CF,self.m1_CF_n,self.m1_CF_dA=parallelogram_panel(Ox2,Oy2,
-                                                                  v21,v22,
-                                                                  N21,N22,
+        self.m1_CF,self.m1_CF_n,self.m1_CF_dA=parallelogram_panel(self.Ox2,self.Oy2,
+                                                                  self.v1a,self.v1b,
+                                                                  self.CF1_N[0], self.CF1_N[1],
                                                                   self.surface_m1_CF,
                                                                   quadrature='uniform')
-        """
+        self.fimag2,self.fimag2_n,self.fimag2_dA=ImagPlane(self.fimag2_size[0],self.fimag2_size[1],
+                                                        self.fimag2_N[0],self.fimag2_N[1]  
+                                                        )
+
+        self._coords2()
+    def _coords2(self,Rx=[0,0,0]):
+        '''coordinates systems'''
+        '''
+        #angle# is angle change of local coordinates and global coordinates;
+        #D#     is the distance between origin of local coord and global coord in global coordinates;
+        '''
+        '''
+        some germetrical parametrs
+        '''
+
+        #Theta_0  =  0.927295218001612; # offset angle of MR;
+        #Ls       =  12000.0;           # distance between focal point and SR
+        #Lm       =  6000.0;            # distance between MR and SR;
+        #L_fimag  = 18000+Ls
+        #F        = 20000               # equivalent focal length of M2
+        data=np.genfromtxt(self.Model_folder+'/coord.txt',delimiter=',')[:,1]
+        Theta_0=data[0]
+        Ls=data[1]
+        Lm=data[2]
+        F=data[3]
+        L_fimag=1/(1/Ls-1/F)
+        
+        
+
+        self.angle_m2=[-(np.pi/2+Theta_0)/2,0,0] #  1. m2 and global co-ordinates
+        self.D_m2=[0,-Lm*np.sin(Theta_0),0]
+        
+        self.angle_m1=[-Theta_0/2,0,0]          #  2. m1 and global co-ordinates
+        self.D_m1=[0,0,Lm*np.cos(Theta_0)]
+        
+        self.angle_s=[0,np.pi,0];               #  3. source and global co-ordinates
+        self.D_s=[0,0,0]
+        
+        self.angle_fimag=[-Theta_0,0,0];        #  4. fimag and global co-ordinates
+        defocus_fimag=[0,0,0]
+        defocus_fimag[2]=1/(1/F-1/(Ls+Rx[2]))+L_fimag
+        defocus_fimag[1]=(F+L_fimag-defocus_fimag[2])/F*Rx[1]
+        defocus_fimag[0]=(F+L_fimag-defocus_fimag[2])/F*Rx[0]
+        self.D_fimag=[0,0,0]
+        self.D_fimag[0]=defocus_fimag[0]
+        self.D_fimag[1]=defocus_fimag[1]*np.cos(Theta_0)\
+            -np.sin(Theta_0)*(L_fimag-defocus_fimag[2]+Lm)
+        self.D_fimag[2]=-defocus_fimag[1]*np.sin(Theta_0)\
+            -np.cos(Theta_0)*(L_fimag-defocus_fimag[2])
+        
+        defocus_fimag2=[0,0,0]
+        defocus_fimag2[2]=Ls+Rx[2]
+        defocus_fimag2[1]=Rx[1]
+        defocus_fimag2[0]=Rx[0]
+
+        self.D_fimag2=[0,0,0]
+        self.D_fimag2[0]=Rx[0]
+        L1=Lm*np.sin(Theta_0)-self.CF2_dz/np.cos(np.pi/4-Theta_0/2)
+        L=L1+Rx[2]+(Ls-Lm*np.sin(Theta_0))
+        self.D_fimag2[1]=-L1-L*np.sin(Theta_0)+defocus_fimag2[1]*np.cos(Theta_0)
+        self.D_fimag2[2]=-L*np.cos(Theta_0)-defocus_fimag2[1]*np.sin(Theta_0)
+
+
+
+
+        # feed coordinate system
+        '''
+        C=1/(1/Lm-1/F)+defocus[2]+Ls;
+        C=21000;
+        angle_f=[np.pi/2-defocus[1]/C,0,-defocus[0]/C]; 
+        D_f=[defocus[0],Ls+defocus[2]-Lm*np.sin(Theta_0),-defocus[1]];
+        '''
+        self.angle_f=[np.pi/2,0,0];    
+        self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
+
+        
     def CF_view(self):
         CF2=Coord()
         CF2.x=self.M2_CF_4points[:,0]
@@ -129,10 +215,26 @@ class CCAT_holo_half(CCAT_holo):
         CF1 = pv.PolyData(points1,faces1)
         CF2 = pv.PolyData(points2,faces2)
 
+        
+        IF2=Coord()
+        IF2.x=np.array([500,500,-500,-500])
+        IF2.y=np.array([500,-500,-500,500])
+        IF2.z=np.array([0,0,0,0])
+        IF2=local2global(self.angle_fimag,self.D_fimag2,IF2)
+        points3=np.c_[IF2.x.reshape(-1),
+                      IF2.y.reshape(-1),
+                      IF2.z.reshape(-1)]
+        
+        faces3=np.ones(1).astype(int)*4
+        factor=np.linspace(0,3,4).astype(int).reshape(-1,4)
+        faces3=np.c_[faces3,factor].ravel()
+        IF2 = pv.PolyData(points3,faces3)
+
         self.widget.add_mesh(CF1,show_edges=True,color="gray")
         self.widget.add_mesh(CF2,show_edges=True,color="gray")
+        self.widget.add_mesh(IF2,show_edges=True,color="gray")
 
-    def _beam(self,scan_file,Rx=[0,0,0],
+    def _beamA(self,scan_file,Rx=[0,0,0],
               Matrix=False,
               S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,file_name='data'):
         '''**scan_file** is scan trajectary data;
@@ -164,9 +266,211 @@ class CCAT_holo_half(CCAT_holo):
                                                     self.M1_N[0],self.M1_N[1],
                                                     self.surface_m1
                                                     )
+        
         self.fimag,self.fimag_n,self.fimag_dA=ImagPlane(self.fimag_size[0],self.fimag_size[1],
                                                         self.fimag_N[0],self.fimag_N[1]  
                                                         )
+        self.m2_CF,self.m2_CF_n,self.m2_CF_dA=parallelogram_panel(self.Ox1,self.Oy1,
+                                                                  self.v2a,self.v2b,
+                                                                  self.CF2_N[0], self.CF2_N[1],
+                                                                  self.surface_m2_CF,
+                                                                  quadrature='uniform')
+        self.m1_CF,self.m1_CF_n,self.m1_CF_dA=parallelogram_panel(self.Ox2,self.Oy2,
+                                                                  self.v1a,self.v1b,
+                                                                  self.CF1_N[0], self.CF1_N[1],
+                                                                  self.surface_m1_CF,
+                                                                  quadrature='uniform')
+        self.fimag2,self.fimag2_n,self.fimag2_dA=ImagPlane(self.fimag2_size[0],self.fimag2_size[1],
+                                                        self.fimag2_N[0],self.fimag2_N[1]  
+                                                        )
+
+
+        # Misalignment of panel adjusters
+        self.m2.z=self.m2.z + Error_m2 + deformation(S2_init.ravel(),
+                                          self.Panel_center_M2,
+                                          self.p_m2,self.q_m2,self.m2)
+        self.m1.z=self.m1.z + Error_m1 - deformation(S1_init.ravel(),
+                                          self.Panel_center_M1,
+                                          self.p_m1,self.q_m1,self.m1)
+
+        start=time.perf_counter()
+        # 1. convert MIRROR 2 into global coordinate system
+        m2=local2global(self.angle_m2,self.D_m2,self.m2)
+        m2_n=local2global(self.angle_m2,[0,0,0],self.m2_n)
+        m2_CF=local2global(self.angle_m2,self.D_m2,self.m2_CF)
+        m2_CF_n=local2global(self.angle_m2,[0,0,0],self.m2_CF_n)
+        Field_m2=Complex()
+        Field_m2_CF=Complex()
+
+        # 2. illumination field on M2
+        print('step 1:\n')
+        Field_m2.real,Field_m2.imag,cosm2_i=Feed_beam(self.edge_taper,
+                                                      self.Angle_taper,
+                                                      self.k,
+                                                      m2,m2_n,
+                                                      self.angle_f,self.D_f
+                                                      )
+        Field_m2_CF.real,Field_m2_CF.imag,cosm2_CF_i=Feed_beam(self.edge_taper,
+                                                      self.Angle_taper,
+                                                      self.k,
+                                                      m2_CF,m2_CF_n,
+                                                      self.angle_f,self.D_f
+                                                      )
+        
+        # 3. calculate field on IF plane
+        print('step 2:\n')
+        fimag=local2global(self.angle_fimag,self.D_fimag,self.fimag)
+        fimag_n=local2global(self.angle_fimag,[0,0,0],self.fimag_n)
+        fimag2=local2global(self.angle_fimag2,self.D_fimag2,self.fimag2)
+        fimag2_n=local2global(self.angle_fimag2,[0,0,0],self.fimag2_n)
+        Matrix1,self.Field_fimag,cosm2_r=PO_scalar(m2,m2_n,
+                                              self.m2_dA,
+                                              fimag,cosm2_i,
+                                              Field_m2,-self.k,
+                                              Keepmatrix=Matrix
+                                              )
+        Matrix1,self.Field_fimag2,cosm2_CF_r=PO_scalar(m2_CF,m2_CF_n,
+                                              self.m2_CF_dA,
+                                              fimag2,cosm2_CF_i,
+                                              Field_m2_CF,-self.k,
+                                              Keepmatrix=Matrix
+                                              )
+        
+        # 4. calculate field on M1
+        m1=local2global(self.angle_m1,self.D_m1,self.m1)
+        m1_n=local2global(self.angle_m1,[0,0,0],self.m1_n)
+        self.aperture_xy=np.append(m1.x,m1.y).reshape(2,-1)/self.R1
+
+        m1_CF=local2global(self.angle_m1,self.D_m1,self.m1_CF)
+        m1_CF_n=local2global(self.angle_m1,[0,0,0],self.m1_CF_n)
+
+        NN=int(fimag.x.size/2)
+        Fimag0=[fimag.x[NN],fimag.y[NN],fimag.z[NN]]
+        x=Fimag0[0].item()-m1.x.reshape(1,-1)
+        y=Fimag0[1].item()-m1.y.reshape(1,-1)
+        z=Fimag0[2].item()-m1.z.reshape(1,-1)
+        
+        r=np.sqrt(x**2+y**2+z**2)
+        cosm1_i=(x*m1_n.x+y*m1_n.y+z*m1_n.z)/r
+        #cosm1_i=T.tensor(cosm1_i).to(DEVICE);
+        del(x,y,z,r)
+        print('step 3:\n')
+        Matrix2,Field_m1,cosm=PO_scalar(fimag,fimag_n,self.fimag_dA,
+                                        m1,np.array([1]),
+                                        self.Field_fimag,
+                                        self.k,
+                                        Keepmatrix=Matrix
+                                        )
+        del(cosm)
+        Matrix2,Field_m1_CF,cosm=PO_scalar(fimag,fimag_n,self.fimag_dA,
+                                        m1_CF,np.array([1]),
+                                        self.Field_fimag,
+                                        self.k,
+                                        Keepmatrix=Matrix
+                                        )
+        del(cosm)
+
+        '''
+        emerging m1 and m2 to m12
+        '''    
+        Matrix21=Complex()
+        if Matrix:
+            Matrix21.real=np.matmul(Matrix2.real,Matrix1.real)-np.matmul(Matrix2.imag,Matrix1.imag)
+            Matrix21.imag=np.matmul(Matrix2.real,Matrix1.imag)+np.matmul(Matrix2.imag,Matrix1.real)
+        else:
+            pass
+        del(Matrix2,Matrix1)
+        
+        #5. calculate the field in the source range;
+        source=local2global(self.angle_s,self.D_s,scan_pattern)
+        print('step 4:\n')
+        Matrix3,self.Field_s1,cosm1_r=PO_scalar(m1,m1_n,self.m1_dA,
+                                          source,cosm1_i,
+                                          Field_m1,
+                                          self.k,
+                                          Keepmatrix=Matrix
+                                          )
+        
+        Matrix3,self.Field_s2,cosm1_r=PO_scalar(m1_CF,m1_CF_n,self.m1_CF_dA,
+                                          source,cosm1_i,
+                                          Field_m1_CF,
+                                          self.k,
+                                          Keepmatrix=Matrix
+                                          )
+        self.Field_s=self.Field_s1.real+self.Field_s2.real+1j*(self.Field_s1.imag+self.Field_s2.imag)
+        
+        elapsed =(time.perf_counter()-start)
+        print('time used:',elapsed)
+        # Save the computation data into h5py file, and the intermediate Matrixs that wil
+        # be used for accelerating the forward beam calculations.
+        self.output_filename=self.output_folder+'/'+file_name+'_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        with h5py.File(self.output_filename,'w') as f:
+              #f.create_dataset('conf',data=(Rx,scan_file))
+              f.create_dataset('freq (GHz)',data=self.freq)
+              del(Matrix21,Matrix3)
+              f.create_dataset('F_m2_real',data=Field_m2.real)
+              f.create_dataset('F_m2_imag',data=Field_m2.imag)
+              f.create_dataset('F_m1_real',data=Field_m1.real)
+              f.create_dataset('F_m1_imag',data=Field_m1.imag)
+              f.create_dataset('F_if_real',data=self.Field_fimag.real)
+              f.create_dataset('F_if_imag',data=self.Field_fimag.imag)
+              f.create_dataset('F_beam_real',data=self.Field_s.real)
+              f.create_dataset('F_beam_imag',data=self.Field_s.imag)
+              f.create_dataset('aperture',data=self.aperture_xy)
+              f.create_dataset('scan_pattern',data=np.concatenate((source.x,
+                                                                   source.y,
+                                                                   source.z)).reshape(3,-1))
+    def _beamB(self,scan_file,Rx=[0,0,0],
+              Matrix=False,
+              S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,file_name='data'):
+        '''**scan_file** is scan trajectary data;
+           **   Rx    ** position of receiver in focal plane or receiver plane
+           ** S2_init ** Offset of panel adjusters on M2
+           ** S1_init ** Offset of panel adjusters on M1
+           ** Error_2/1** Self-defined surface errors on M2 and M1.
+        '''
+        Feed_beam=self.input_feed_beam
+        trace=np.genfromtxt(scan_file,delimiter=',')
+        scan_pattern=Coord()
+        scan_pattern.x=trace[:,0]
+        scan_pattern.y=trace[:,1]
+        scan_pattern.z=trace[:,2]
+
+        ''' first beam pattern calculation'''
+        
+        # Set receiver location
+        self._coords(Rx=Rx)
+
+        # create M1 M2 & IF plane model.
+        self.m2,self.m2_n,self.m2_dA=squarepanel(self.Panel_center_M2[...,0],self.Panel_center_M2[...,1],
+                                                    self.M2_size[0],self.M2_size[1],
+                                                    self.M2_N[0],self.M2_N[1],
+                                                    self.surface_m2
+                                                    )
+        self.m1,self.m1_n,self.m1_dA=squarepanel(self.Panel_center_M1[...,0],self.Panel_center_M1[...,1],
+                                                    self.M1_size[0],self.M1_size[1],
+                                                    self.M1_N[0],self.M1_N[1],
+                                                    self.surface_m1
+                                                    )
+        
+        self.fimag,self.fimag_n,self.fimag_dA=ImagPlane(self.fimag_size[0],self.fimag_size[1],
+                                                        self.fimag_N[0],self.fimag_N[1]  
+                                                        )
+        self.m2_CF,self.m2_CF_n,self.m2_CF_dA=parallelogram_panel(self.Ox1,self.Oy1,
+                                                                  self.v2a,self.v2b,
+                                                                  self.CF2_N[0], self.CF2_N[1],
+                                                                  self.surface_m2_CF,
+                                                                  quadrature='uniform')
+        self.m1_CF,self.m1_CF_n,self.m1_CF_dA=parallelogram_panel(self.Ox2,self.Oy2,
+                                                                  self.v1a,self.v1b,
+                                                                  self.CF1_N[0], self.CF1_N[1],
+                                                                  self.surface_m1_CF,
+                                                                  quadrature='uniform')
+        self.fimag2,self.fimag2_n,self.fimag2_dA=ImagPlane(self.fimag2_size[0],self.fimag2_size[1],
+                                                        self.fimag2_N[0],self.fimag2_N[1]  
+                                                        )
+
+
         # Misalignment of panel adjusters
         self.m2.z=self.m2.z + Error_m2 + deformation(S2_init.ravel(),
                                           self.Panel_center_M2,
@@ -275,7 +579,7 @@ class CCAT_holo_half(CCAT_holo):
               f.create_dataset('scan_pattern',data=np.concatenate((source.x,
                                                                    source.y,
                                                                    source.z)).reshape(3,-1))
-
+              
     def plot_beam(self,filename=None):
         '''plot the lastest calculated beam'''
         if filename==None:
