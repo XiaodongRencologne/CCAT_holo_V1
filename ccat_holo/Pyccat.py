@@ -498,7 +498,7 @@ class CCAT_holo():
             axs[1].axis('equal')
             plt.show()
             # Field on M2
-            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            fig, axs = plt.subplots(1, 1, figsize=(12, 5))
             cmap='jet'
             M2_panelN=int(self.Panel_center_M2.size/2)
             Nx=self.M2_N[0]
