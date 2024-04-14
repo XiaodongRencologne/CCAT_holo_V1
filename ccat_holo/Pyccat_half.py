@@ -233,7 +233,7 @@ class CCAT_holo_half(CCAT_holo):
 
         self.widget.add_mesh(CF1,show_edges=True,color="gray")
         self.widget.add_mesh(CF2,show_edges=True,color="gray")
-        self.widget.add_mesh(IF2,show_edges=True)#,color="gray")
+        #self.widget.add_mesh(IF2,show_edges=True)#,color="gray")
 
     def _beamA(self,scan_file,Rx=[0,0,0],
               Matrix=False,
