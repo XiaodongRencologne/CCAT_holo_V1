@@ -169,10 +169,6 @@ class CCAT_holo_half(CCAT_holo):
         self.D_fimag2[1]=-L1-L*np.sin(Theta_0)+defocus_fimag2[1]*np.cos(Theta_0)
         self.D_fimag2[2]=-L*np.cos(Theta_0)-defocus_fimag2[1]*np.sin(Theta_0)
         self.angle_fimag2=[-Theta_0,0,0]
-
-
-
-
         # feed coordinate system
         '''
         C=1/(1/Lm-1/F)+defocus[2]+Ls;
@@ -183,7 +179,21 @@ class CCAT_holo_half(CCAT_holo):
         self.angle_f=[np.pi/2,0,0];    
         self.D_f=[Rx[0],Ls+Rx[2]-Lm*np.sin(Theta_0),-Rx[1]] 
 
+    def IF_view(self):
+        IF2=Coord()
+        IF2.x=np.array([500,500,-500,-500])
+        IF2.y=np.array([500,-500,-500,500])
+        IF2.z=np.array([0,0,0,0])
+        IF2=local2global(self.angle_fimag,self.D_fimag2,IF2)
+        points3=np.c_[IF2.x.reshape(-1),
+                      IF2.y.reshape(-1),
+                      IF2.z.reshape(-1)]
         
+        faces3=np.ones(1).astype(int)*4
+        factor=np.linspace(0,3,4).astype(int).reshape(-1,4)
+        faces3=np.c_[faces3,factor].ravel()
+        IF2 = pv.PolyData(points3,faces3)
+        self.widget.add_mesh(IF2,show_edges=True,color="gray")
     def CF_view(self):
         CF2=Coord()
         CF2.x=self.M2_CF_4points[:,0]
@@ -216,25 +226,11 @@ class CCAT_holo_half(CCAT_holo):
         CF1 = pv.PolyData(points1,faces1)
         CF2 = pv.PolyData(points2,faces2)
 
-        
-        IF2=Coord()
-        IF2.x=np.array([500,500,-500,-500])
-        IF2.y=np.array([500,-500,-500,500])
-        IF2.z=np.array([0,0,0,0])
-        IF2=local2global(self.angle_fimag,self.D_fimag2,IF2)
-        points3=np.c_[IF2.x.reshape(-1),
-                      IF2.y.reshape(-1),
-                      IF2.z.reshape(-1)]
-        
-        faces3=np.ones(1).astype(int)*4
-        factor=np.linspace(0,3,4).astype(int).reshape(-1,4)
-        faces3=np.c_[faces3,factor].ravel()
-        IF2 = pv.PolyData(points3,faces3)
-
         self.widget.add_mesh(CF1,show_edges=True,color="gray")
         self.widget.add_mesh(CF2,show_edges=True,color="gray")
         #self.widget.add_mesh(IF2,show_edges=True)#,color="gray")
 
+    
     def _beamA(self,scan_file,Rx=[0,0,0],
               Matrix=False,
               S2_init=np.zeros((5,69)),S1_init=np.zeros((5,77)),Error_m2=0,Error_m1=0,file_name='data'):
@@ -870,12 +866,17 @@ class CCAT_holo_half(CCAT_holo):
                 x=f['scan_pattern'][0,:].reshape(NN,-1)
                 y=f['scan_pattern'][1,:].reshape(NN,-1)
             beam=beam.reshape(NN,-1)
-            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            fig, axs = plt.subplots(1, 2, figsize=(13.5, 5))
             cmap='jet'
-            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)),cmap='jet')
+            Max=np.abs(beam).max()
+            vmax=0
+            vmin=-70
+            p1=axs[0].pcolor(x,y,20*np.log10(np.abs(beam)/Max),cmap='jet',vmax=vmax,vmin=vmin)
             axs[0].axis('equal')
             p2=axs[1].pcolor(x,y,np.angle(beam)*180/np.pi,cmap='jet',vmax=180,vmin=-180)
             axs[1].axis('equal')
+            plt.colorbar(p1)
+            plt.colorbar(p2)
             plt.show()
 
             # cut plot 
@@ -889,7 +890,7 @@ class CCAT_holo_half(CCAT_holo):
             plt.show()
 
             # Fields on M1
-            fig, axs = plt.subplots(1, 1, figsize=(12, 5))
+            fig, axs = plt.subplots(1, 1, figsize=(6, 5))
             cmap='jet'
             M1_panelN=int(self.Panel_center_M1.size/2)
             Nx=self.M1_N[0]
@@ -910,6 +911,7 @@ class CCAT_holo_half(CCAT_holo):
             p1=axs.pcolor(x,y,
                           20*np.log10(np.abs(F_M1_CF.reshape(Ny,Nx))),
                           cmap=cmap,vmin=vmin,vmax=vmax)
+            fig.colorbar(p1)
 
             axs.axis('equal')
             #axs[1].axis('equal')
