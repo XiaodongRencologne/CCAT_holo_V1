@@ -498,7 +498,7 @@ class CCAT_holo():
             axs[1].axis('equal')
             plt.show()
             # Field on M2
-            fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+            fig, axs = plt.subplots(1, 1, figsize=(12, 5))
             cmap='jet'
             M2_panelN=int(self.Panel_center_M2.size/2)
             Nx=self.M2_N[0]
@@ -509,14 +509,13 @@ class CCAT_holo():
             for n in range(M2_panelN):
                 x=self.m2_0.x[n*N:(n+1)*N].reshape(Ny,Nx)
                 y=self.m2_0.y[n*N:(n+1)*N].reshape(Ny,Nx)
-                p1=axs[0].pcolor(x,y,
+                p1=axs.pcolor(x,y,
                                  20*np.log10(np.abs(F_M2[n*N:(n+1)*N].reshape(Ny,Nx))),
                                  cmap=cmap,vmin=vmin,vmax=vmax)
-                p2=axs[1].pcolor(x,y,
-                                 np.angle(F_M2[n*N:(n+1)*N].reshape(Ny,Nx))*180/np.pi,
-                                 cmap=cmap,vmin=-180,vmax=180)
-            axs[0].axis('equal')
-            axs[1].axis('equal')
+                #p2=axs[1].pcolor(x,y,
+                #                 np.angle(F_M2[n*N:(n+1)*N].reshape(Ny,Nx))*180/np.pi,
+                #                 cmap=cmap,vmin=-180,vmax=180)
+            axs.axis('equal')
             plt.show()
 
 
