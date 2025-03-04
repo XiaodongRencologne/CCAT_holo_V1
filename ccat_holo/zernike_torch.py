@@ -27,7 +27,7 @@ def ev(n, m, x, y):
     radcoeffs= np.array(list(map(lambda s: (-1)**s * fact(n-s) / ( fact(s) * fact ( (n+M)/2 -s ) * fact( (n-M)/2 -s )),
                                     np.arange(Nradterms))))
     
-    r=np.hypot(x,y);
+    r=np.sqrt(x**2+y**2)
     phi=np.arctan2(y,x);
     
     v=np.zeros_like(r);
@@ -49,7 +49,9 @@ def N(nmax):
 
 
 def mkCFn(N_order,x,y,dtype='numpy',device=T.device('cpu')):
-    x=np.array(x);y=np.array(y);
+    if T.is_tensor(x):
+        x=x.cpu().numpy()
+        y=y.cpu().numpy()
     zz=np.array([]);
     for n in range(N_order+1):
         for m in range(-n,n+1,2):

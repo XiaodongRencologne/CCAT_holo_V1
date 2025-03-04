@@ -5,11 +5,11 @@ from ccat_holo.BeamPattern import squarePattern
 # %%
 u0=0.027
 v0=0.027
-urange=0.01
-vrange=0.01
-Nu=2
-Nv=2
-forder='test/'
+urange=0.01/2
+vrange=0.01/2
+Nu=31
+Nv=31
+forder='mainbeam/'
 if not os.path.exists(forder):
     os.makedirs(forder)
 print(os.path.exists(forder))

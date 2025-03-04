@@ -115,6 +115,14 @@ def correctphase2(data,DEVICE=DEVICE0):
         
     return data1;
 
+def normalize(data,DEVICE=DEVICE0): 
+    N_angle=int(np.sqrt(data.size()[1]));
+    data1=T.zeros((int(data.size()[0]/2),data.size()[1]),dtype=T.float64).to(DEVICE)
+    for i in range(data1.size()[0]):
+        data1[i,...] = data[i*2,...]**2+data[i*2+1,...]**2
+        Amp0=T.sqrt(T.sum(data1[i,...]))
+        data1[i,...] = T.sqrt(data1[i,...])/Amp0
+    return data1
 
 def correctphase(data, DEVICE=DEVICE0): 
     N_angle=int(np.sqrt(data.size()[1]));

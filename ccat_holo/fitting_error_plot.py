@@ -174,8 +174,8 @@ def Fit_M_Surface(Fit_S,vmax=100,vmin=-100,
 ### plot the zernike results
 def Fit_M_Surface_zk(coeff_zk,Z_order,model_file='CCAT_model',vmax=100,vmin=-100):
     coeff_zk=coeff_zk.reshape(2,-1)
-    coeff_m2=np.append(np.zeros(3),coeff_zk[0,:])
-    coeff_m1=np.append(np.zeros(3),coeff_zk[1,:])
+    coeff_m2=np.append(np.zeros(1),coeff_zk[0,:])
+    coeff_m1=np.append(np.zeros(1),coeff_zk[1,:])
 
     coefficient_m2,coefficient_m1,List_m2,List_m1,M2_size,M1_size,R2,R1,p_m2,q_m2,p_m1,q_m1,M2_N,M1_N,fimag_N,fimag_size,edge_taper,Angle_taper,k=read_input(model_file)
 

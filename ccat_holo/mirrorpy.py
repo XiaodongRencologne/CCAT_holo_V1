@@ -188,7 +188,7 @@ def adjuster(List_m2,List_m1,p_m2,q_m2,p_m1,q_m1,R2,R1):
     #ad_m1_xy=np.zeros((2,int(List_m1.size/2)*5));
     p_m2=np.array(p_m2);p_m2=np.array(p_m2);R2=np.array(R2);
     p_m1=np.array(p_m1);q_m1=np.array(q_m1);R1=np.array(R1);
-    List_m2=np.array(List_m2);List_m1=np.array(List_m1)
+    List_m2=np.array(List_m2).reshape(-1,2);List_m1=np.array(List_m1).reshape(-1,2)
     ad1=List_m2.T;
     ad2=ad1.copy(); ad2[0,...]=ad2[0,...]+p_m2;ad2[1,...]=ad2[1,...]+q_m2;
     ad3=ad1.copy(); ad3[0,...]=ad3[0,...]-p_m2;ad3[1,...]=ad3[1,...]+q_m2;

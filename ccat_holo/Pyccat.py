@@ -24,8 +24,8 @@ from coordinate_operations import Transform_local2global as local2global
 # are expressed by Coord.x, Coord.y, Coord.z
 # other functions are known from theirs names used for transformations between coordinate
 # systems by giving their origin point displacement and rotation angles.
-from Kirchhoff import Complex#, PO_scalar
-from KirchhoffpyGPU import PO_scalar
+from Kirchhoff import Complex, PO_scalar
+#from KirchhoffpyGPU import PO_scalar
 # PO_scalar is the field solver. Compex is used to express complex fields on mirror surfaces
 # and desired field region.
 from Feedpy import Gaussibeam
@@ -34,7 +34,7 @@ from Feedpy import Gaussibeam
 from zernike_torch import mkCFn as make_zernike;
 from zernike_torch import N as poly_N;
 
-from inference import DATA2TORCH, correctphase2
+from inference import DATA2TORCH, correctphase2,normalize
 from inference import fitting_func, fitting_func_zernike
 
 # ploting package
@@ -102,8 +102,8 @@ class CCAT_holo():
         self.surface_m1=profile(M1_poly_coeff,self.R1)
 
         # panel size, center, and number of sampling points on each panel
-        self.Panel_center_M2=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',')
-        self.Panel_center_M1=np.genfromtxt(Model_folder+'/L_m1.txt',delimiter=',')
+        self.Panel_center_M2=np.genfromtxt(Model_folder+'/L_m2.txt',delimiter=',').reshape(-1,2)
+        self.Panel_center_M1=np.genfromtxt(Model_folder+'/L_m1.txt',delimiter=',').reshape(-1,2)
         parameters=np.genfromtxt(Model_folder+'/Model.txt',delimiter=',')[:,1]
 
         self.M2_size=parameters[0:2]
@@ -404,7 +404,7 @@ class CCAT_holo():
         print('time used:',elapsed)
         # Save the computation data into h5py file, and the intermediate Matrixs that wil
         # be used for accelerating the forward beam calculations.
-        self.output_filename=self.output_folder+'/'+file_name+'_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        self.output_filename=self.output_folder+'/'+file_name+'_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
         with h5py.File(self.output_filename,'w') as f:
               #f.create_dataset('conf',data=(Rx,scan_file))
               f.create_dataset('freq (GHz)',data=self.freq)
@@ -555,7 +555,7 @@ class CCAT_holo():
             del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf['Rx1'][0]
-        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
         with h5py.File(file,'r') as f:
             self.aperture_xy=f['aperture'][:][:]
         Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
@@ -568,7 +568,7 @@ class CCAT_holo():
         if Memory_reduc:
             for i in range(3):
                 Rx=self.holo_conf['Rx'+str(i+1)][0]
-                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
                 Vars['Rx'+str(i+1)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
             flip_order2=[]
             N_m2=self.Panel_center_M2.shape[0]
@@ -587,7 +587,7 @@ class CCAT_holo():
         else:
             for i in range(N):
                 Rx=self.holo_conf['Rx'+str(i+1)][0]
-                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
                 Vars['Rx'+str(i+1)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
             
         if fitting_param=='panel adjusters':
@@ -693,7 +693,7 @@ class CCAT_holo():
             del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf['Rx2'][0]
-        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
         with h5py.File(file,'r') as f:
             self.aperture_xy=f['aperture'][:][:]
         Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
@@ -706,7 +706,7 @@ class CCAT_holo():
         if Memory_reduc:
             for i in range(2):
                 Rx=self.holo_conf['Rx'+str(i+2)][0]
-                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
                 Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
             flip_order2=[]
             N_m2=self.Panel_center_M2.shape[0]
@@ -725,7 +725,7 @@ class CCAT_holo():
         else:
             for i in range(N):
                 Rx=self.holo_conf['Rx'+str(i+2)][0]
-                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+                file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
                 Vars['Rx'+str(i+2)]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
         if fitting_param=='panel adjusters':
@@ -815,7 +815,7 @@ class CCAT_holo():
             del(self.FF)
         # read the aperture field points coordinates
         Rx=self.holo_conf[conf][0]
-        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
         with h5py.File(file,'r') as f:
             self.aperture_xy=f['aperture'][:][:]
         Aperture=DATA2TORCH(self.aperture_xy,DEVICE=Device)[0]
@@ -824,7 +824,7 @@ class CCAT_holo():
                                                              self.p_m2,self.q_m2,
                                                              self.p_m1,self.q_m1,DEVICE=Device)
         Vars={conf: None}
-        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5py'
+        file=self.output_folder+'/data_Rx_dx'+str(Rx[0])+'_dy'+str(Rx[1])+'_dz'+str(Rx[2])+'.h5'
         Vars[conf]=DATA2TORCH(*Load_Mat(file),DEVICE=Device)
         
         if fitting_param=='panel adjusters':
@@ -889,7 +889,7 @@ class CCAT_holo():
         self.result_LP=scipy.optimize.minimize(lossfuc,fit_coeff,method='BFGS',jac=True,tol=1e-4)
         elapsed=(time.perf_counter()-start)
         print('Cost time:', elapsed)
-        with h5py.File(self.output_folder+'/'+outputfilename+'.h5py','w') as f:
+        with h5py.File(self.output_folder+'/'+outputfilename+'.h5','w') as f:
             for item in dir(self.result_LP):
                 f.create_dataset(item,data=self.result_LP[item])
             f.create_dataset('log',data=np.array(Log['residual']))
@@ -949,7 +949,7 @@ class CCAT_holo():
         elapsed=(time.perf_counter()-start)
         print('Cost time:', elapsed)
 
-        with h5py.File(self.output_folder+'/'+outputfilename+'.h5py','w') as f:
+        with h5py.File(self.output_folder+'/'+outputfilename+'.h5','w') as f:
             for item in dir(self.result):
                 f.create_dataset(item,data=self.result[item])
             f.create_dataset('residual',data=np.array(Log['residual']))
@@ -975,7 +975,7 @@ class CCAT_holo():
             Params=T.tensor(parameters,requires_grad=True)
             parameters=Params.to(Device)
             params=parameters[0:-(6+5)*Map_N].reshape(2,-1)
-            Surf_coeff=T.cat((T.zeros((2,3)),params),axis=1)
+            Surf_coeff=T.cat((T.zeros((2,1)).to(Device),params),axis=1)
             paraA=parameters[-(6+5)*Map_N:-5*Map_N]
             paraP=parameters[-5*Map_N:]
 
@@ -994,14 +994,66 @@ class CCAT_holo():
             print('res:',r.item())
             return r.data.cpu().numpy(),Params.grad.data.cpu().numpy()
         
-        fit_coeff=np.append(np.zeros(2*(poly_N(self.Z_order)-3)),Init_LP).ravel()
+        fit_coeff=np.append(np.zeros(2*(poly_N(self.Z_order)-1)),Init_LP).ravel()
 
         start=time.perf_counter()
         self.result_zk=scipy.optimize.minimize(lossfuc,fit_coeff,method="BFGS",jac=True,tol=1e-4)
         elapsed=(time.perf_counter()-start)
         print('Cost time:', elapsed)
 
-        with h5py.File(self.output_folder+'/'+outputfilename+'.h5py','w') as f:
+        with h5py.File(self.output_folder+'/'+outputfilename+'.h5','w') as f:
+            for item in dir(self.result_zk):
+                f.create_dataset(item,data=self.result_zk[item])
+            f.create_dataset('residual',data=np.array(Log['residual']))
+            f.create_dataset('time',data=elapsed)
+
+    def fit_surface_zk_Amp(self,Meas_maps,constraint=[1,1],
+                    Device=T.device('cpu'),
+                    Init_LP=np.append(np.array([1,0,0,0,0,0]*5),np.array([0,0,0,0,0]*5)),
+                    Map_N=5,
+                    outputfilename='fit_adjusters_zk'):
+        ''' fit the surface profiles of the two mirrors'''
+        ''' Init_LP is initial input parameters for the large-scale errors in aperture plane.
+            Here we suggest to use the values from the first fit_LP fitting.
+        '''
+        Lambda0=constraint[0]
+        Lambda1=constraint[1]
+        #x2,y2,x1,y1=DATA2TORCH(self.S2_x,self.S2_y,self.S1_x,self.S1_y,DEVICE=Device)
+        test=normalize(Meas_maps,DEVICE=Device)
+
+        Log={'residual':[]}
+        def lossfuc(parameters):
+            '''Change the input parameters into 'tensor type' '''
+            Params=T.tensor(parameters,requires_grad=True)
+            parameters=Params.to(Device)
+            params=parameters[0:-(6+5)*Map_N].reshape(2,-1)
+            Surf_coeff=T.cat((T.zeros((2,1)).to(Device),params),axis=1)
+            paraA=parameters[-(6+5)*Map_N:-5*Map_N]
+            paraP=parameters[-5*Map_N:]
+
+            Data=self.FF(Surf_coeff,paraA,paraP)
+            Data=normalize(Data,DEVICE=Device)
+
+            r0=((Data-test)**2).sum()
+            # consider the lagrange factors
+
+            Z2=(T.abs(Surf_coeff[0,:])**2).sum()
+            Z1=(T.abs(Surf_coeff[1,:])**2).sum()
+            r=r0+Lambda0*Z2+Lambda1*Z1
+            print(Z2.item(),Z1.item(),r0.item())
+            r=r.sum()
+            r.backward()
+            print('res:',r.item())
+            return r.data.cpu().numpy(),Params.grad.data.cpu().numpy()
+        
+        fit_coeff=np.append(np.zeros(2*(poly_N(self.Z_order)-1)),Init_LP).ravel()
+
+        start=time.perf_counter()
+        self.result_zk=scipy.optimize.minimize(lossfuc,fit_coeff,method="BFGS",jac=True,tol=1e-4)
+        elapsed=(time.perf_counter()-start)
+        print('Cost time:', elapsed)
+
+        with h5py.File(self.output_folder+'/'+outputfilename+'.h5','w') as f:
             for item in dir(self.result_zk):
                 f.create_dataset(item,data=self.result_zk[item])
             f.create_dataset('residual',data=np.array(Log['residual']))
